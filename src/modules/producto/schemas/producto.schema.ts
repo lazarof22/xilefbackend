@@ -7,16 +7,13 @@ export type ProductoDocument = HydratedDocument<Producto>;
 @Schema()
 export class Producto {
     @Prop({required:true, unique: true })
-    id_producto: string;
+    codigo_producto: string;
 
     @Prop({ required: true})
     nombre_producto: string;
 
     @Prop({required:true})
     categoria_producto: string;
-
-    @Prop({required:true})
-    unidad_medida_producto:string;
 
     @Prop({required:true})
     precio_compra:number;
@@ -28,7 +25,10 @@ export class Producto {
     stock_inicial:number; //cantidad inicial
 
     @Prop({required:true})
-    stock_minimo:number;
+    stock_minimo:number; // cantidad minima que debe haber
+
+    @Prop({required:true})
+    estado: string;
 
 
 }

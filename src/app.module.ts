@@ -6,6 +6,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClienteModule } from './modules/cliente/cliente.module';
 import { ProductoModule } from './modules/producto/producto.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { MonedaModule } from './modules/moneda/moneda.module';
 
 @Module({
   imports: [
@@ -19,8 +20,10 @@ import { AuthModule } from './modules/auth/auth.module';
       }),
       inject: [ConfigService],
     }),
+      //Iniciacion de los modulos
     AuthModule,
     ClienteModule,
+    MonedaModule,
     ProductoModule,
 
   ],

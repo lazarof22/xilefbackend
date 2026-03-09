@@ -4,10 +4,11 @@ import { HydratedDocument } from "mongoose";
 
 export type ClienteDocument = HydratedDocument<Cliente>;
 
+
 @Schema()
 export class Cliente {
     @Prop({required:true, unique: true })
-    id_cliente: string;
+    id_cliente: string; //ci???
 
     @Prop({ required: true})
     nombre_cliente: string;
