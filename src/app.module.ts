@@ -7,6 +7,8 @@ import { ClienteModule } from './modules/cliente/cliente.module';
 import { ProductoModule } from './modules/producto/producto.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MonedaModule } from './modules/moneda/moneda.module';
+import { KardexModule } from './modules/kardex/kardex.module';
+import { VentaModule } from './venta/venta.module';
 
 @Module({
   imports: [
@@ -23,8 +25,10 @@ import { MonedaModule } from './modules/moneda/moneda.module';
       //Iniciacion de los modulos
     AuthModule,
     ClienteModule,
+    KardexModule,
     MonedaModule,
     ProductoModule,
+    VentaModule,
 
   ],
   controllers: [AppController],

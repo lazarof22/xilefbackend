@@ -14,22 +14,22 @@ export class CreateProductoDto {
     @IsNotEmpty()
     categoria_producto: string;
 
-    @IsString()
+    
     @IsNotEmpty()
     @IsNumber()
     precio_compra: number;
 
-    @IsString()
+    
     @IsNotEmpty()
     @IsNumber()
     precio_venta: number;
 
-    @IsString()
+    
     @IsNotEmpty()
     @IsNumber()
     stock_inicial: number;
 
-    @IsString()
+    
     @IsNotEmpty()
     @IsNumber()
     stock_minimo: number;
