@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CreateKardexDto } from './dto/create-kardex.dto';
 import { UpdateKardexDto } from './dto/update-kardex.dto';
+import { PaginationKardexDto, PaginatedResponse } from './dto/pagination-kardex.dto';
 import { Kardex, KardexTipo } from './schema/kardex.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -47,12 +48,41 @@ export class KardexService {
 
 
   //Buscar todos los kardex
-    async findAll(): Promise<any> {
-    return this.kardexModel
-      .find()
-      .populate({ path: 'productoId', select: 'nombre_producto stock_inicial' })
-      .exec();
-  }
+    async findAll(paginationDto?: PaginationKardexDto): Promise<PaginatedResponse<Kardex> | Kardex[]> {
+      // Si no hay parámetros de paginación, retornar todas las kardex (para compatibilidad)
+      if (!paginationDto) {
+        return this.kardexModel
+          .find()
+          .populate({ path: 'productoId', select: 'nombre_producto stock_inicial' })
+          .sort({ createdAt: -1 })
+          .exec();
+      }
+
+      const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = paginationDto;
+      const skip = (page - 1) * limit;
+      const sortDirection = sortOrder === 'asc' ? 1 : -1;
+
+      const [data, total] = await Promise.all([
+        this.kardexModel
+          .find()
+          .populate({ path: 'productoId', select: 'nombre_producto stock_inicial' })
+          .sort({ [sortBy]: sortDirection })
+          .skip(skip)
+          .limit(limit)
+          .exec(),
+        this.kardexModel.countDocuments(),
+      ]);
+
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data,
+        total,
+        page,
+        limit,
+        totalPages,
+      };
+    }
   
 
   // Buscar un kardex

@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { ProductoService } from './producto.service';
 import { CreateProductoDto } from './dto/create-producto.dto';
 import { UpdateProductoDto } from './dto/update-producto.dto';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { PaginationProductoDto } from './dto/pagination-producto.dto';
+import { ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 
 
 @ApiTags('Producto')
@@ -21,9 +22,13 @@ export class ProductoController {
   @ApiOperation({ summary: 'Obtener todos los productos' })
   @ApiResponse({ status: 201, description: 'Productos obtenidos con exito' })
   @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'sortBy', required: false, type: String })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['asc', 'desc'] })
   @Get()
-  findAll() {
-    return this.productoService.findAll();
+  findAll(@Query() paginationDto: PaginationProductoDto) {
+    return this.productoService.findAll(paginationDto);
   }
 
   @ApiOperation({ summary: 'Obtener un producto' })

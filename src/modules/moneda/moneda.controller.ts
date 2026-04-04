@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { MonedaService } from './moneda.service';
 import { CreateMonedaDto } from './dto/create-moneda.dto';
 import { UpdateMonedaDto } from './dto/update-moneda.dto';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { PaginationMonedaDto } from './dto/pagination-moneda.dto';
+import { ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 
 
 @ApiTags('Moneda')
@@ -19,12 +20,16 @@ export class MonedaController {
   }
 
 
-  @ApiOperation({ summary: 'Obtener una moneda' })
-  @ApiResponse({ status: 201, description: 'Moneda obtenida con exito' })
+  @ApiOperation({ summary: 'Obtener todas las monedas' })
+  @ApiResponse({ status: 201, description: 'Monedas obtenidas con exito' })
   @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'sortBy', required: false, type: String })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['asc', 'desc'] })
   @Get()
-  findAll() {
-    return this.monedaService.findAll();
+  findAll(@Query() paginationDto: PaginationMonedaDto) {
+    return this.monedaService.findAll(paginationDto);
   }
 
   @ApiOperation({ summary: 'Obtener todas las monedas' })

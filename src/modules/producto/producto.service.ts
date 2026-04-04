@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CreateProductoDto } from './dto/create-producto.dto';
 import { UpdateProductoDto } from './dto/update-producto.dto';
+import { PaginationProductoDto, PaginatedResponse } from './dto/pagination-producto.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Producto } from './schemas/producto.schema';
 import { Model } from 'mongoose';
@@ -32,8 +33,38 @@ export class ProductoService {
   
   
     //Buscar todos los productos
-    async findAll(): Promise<Producto[] | { message: string }> {
-      return this.productoModel.find();
+    async findAll(paginationDto?: PaginationProductoDto): Promise<PaginatedResponse<Producto> | Producto[]> {
+      // Si no hay parámetros de paginación, retornar todas las productos (para compatibilidad)
+      if (!paginationDto) {
+        return this.productoModel
+          .find()
+          .sort({ createdAt: -1 })
+          .exec();
+      }
+
+      const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = paginationDto;
+      const skip = (page - 1) * limit;
+      const sortDirection = sortOrder === 'asc' ? 1 : -1;
+
+      const [data, total] = await Promise.all([
+        this.productoModel
+          .find()
+          .sort({ [sortBy]: sortDirection })
+          .skip(skip)
+          .limit(limit)
+          .exec(),
+        this.productoModel.countDocuments(),
+      ]);
+
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data,
+        total,
+        page,
+        limit,
+        totalPages,
+      };
     }
   
   

@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { ClienteService } from './cliente.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { PaginationClienteDto } from './dto/pagination-cliente.dto';
+import { ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 
 
 @ApiTags('Cliente')
@@ -22,9 +23,13 @@ export class ClienteController {
   @ApiOperation({ summary: 'Obtener todos los clientes' })
   @ApiResponse({ status: 201, description: 'Clientes obtenidos con exito' })
   @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'sortBy', required: false, type: String })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['asc', 'desc'] })
   @Get()
-  findAll() {
-    return this.clienteService.findAll();
+  findAll(@Query() paginationDto: PaginationClienteDto) {
+    return this.clienteService.findAll(paginationDto);
   }
 
   @ApiOperation({ summary: 'Obtener un cliente' })
