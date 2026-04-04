@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateKardexDto } from './dto/create-kardex.dto';
 import { UpdateKardexDto } from './dto/update-kardex.dto';
 import { PaginationKardexDto, PaginatedResponse } from './dto/pagination-kardex.dto';
@@ -17,17 +17,17 @@ export class KardexService {
   //Crear un kardex y actualizar el stock del producto
   async create(
   createKardexDto: CreateKardexDto,
-): Promise<Kardex | { message: string }> {
+): Promise<Kardex> {
   const { productoId, tipo, cantidad, motivo } = createKardexDto;
 
   const producto = await this.productoModel.findById(productoId);
 
   if (!producto) {
-    return { message: 'Producto no encontrado' };
+    throw new NotFoundException('No se encontró el producto');
   }
 
   if(tipo === KardexTipo.SALIDA && producto.stock_inicial < cantidad){
-    return { message: 'Stock insuficiente' };
+    throw new BadRequestException('Stock insuficiente');
   }
 
   const nuevoStock = tipo === KardexTipo.ENTRADA ? producto.stock_inicial + cantidad : producto.stock_inicial - cantidad;
@@ -86,14 +86,14 @@ export class KardexService {
   
 
   // Buscar un kardex
-    async findOne(id: string): Promise<Kardex | { message: string }> {
+    async findOne(id: string): Promise<Kardex> {
     const kar = await this.kardexModel
       .findById(id)
       .populate({ path: 'productoId', select: 'nombre_producto stock_inicial' })
       .exec();
 
     if (!kar) {
-      return { message: 'No existe el kardex' };
+      throw new NotFoundException('No se encontró el kardex');
     }
 
     return kar;

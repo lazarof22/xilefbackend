@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateProductoDto } from './dto/create-producto.dto';
 import { UpdateProductoDto } from './dto/update-producto.dto';
 import { PaginationProductoDto, PaginatedResponse } from './dto/pagination-producto.dto';
@@ -17,17 +17,16 @@ export class ProductoService {
     //Crear un producto
     async create(
       createProductoDto: CreateProductoDto,
-    ): Promise<Producto | { message: string }> {
+    ): Promise<Producto> {
       const existProducto = await this.productoModel.findOne({
         codigo_producto: createProductoDto.codigo_producto,
       });
   
       if (existProducto) {
-        return { message: 'Ya existe el producto' };
+        throw new BadRequestException('Ya existe el producto');
       }
-      const nuevoCliente = new this.productoModel(createProductoDto);
-      nuevoCliente.save();
-      return { message: 'El producto se creo exitosamente' };
+      const nuevoProducto = new this.productoModel(createProductoDto);
+      return nuevoProducto.save();
     }
   
   
@@ -70,33 +69,32 @@ export class ProductoService {
   
   
     // Buscar un producto
-    async findOne(id:string): Promise<Producto | { message: string}> {
+    async findOne(id:string): Promise<Producto> {
     const pro = await this.productoModel.findById(id).exec();
     if (!pro){
-      return {message:'No existe el producto'}
+      throw new NotFoundException('No se encontró el producto');
     }
     return pro;
    }
   
   
    //Actualizar un producto
-    async update( id: string, UpdateProductoDto: UpdateProductoDto): Promise<Producto | { message: string}> {
+    async update( id: string, UpdateProductoDto: UpdateProductoDto): Promise<Producto> {
     const updatepro = await this.productoModel.findByIdAndUpdate(id, UpdateProductoDto, {new :true}).exec();
   
     if (!updatepro) {
-      return{ message: `El producto no existe`}
+      throw new NotFoundException('No se encontró el producto');
     }
     return updatepro;
   }
   
   //Eliminar un producto
   
-   async remove(id: string): Promise<Producto| {message: string}>{
+   async remove(id: string): Promise<void>{
     const deletepro = await this.productoModel.findByIdAndDelete(id);
   
     if (!deletepro) {
-      return { message:"El producto no existe"}
+      throw new NotFoundException('No se encontró el producto');
     }
-    return { message:"El producto se elimino correctamente"};
   }
 }

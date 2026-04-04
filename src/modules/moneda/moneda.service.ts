@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateMonedaDto } from './dto/create-moneda.dto';
 import { UpdateMonedaDto } from './dto/update-moneda.dto';
 import { PaginationMonedaDto, PaginatedResponse } from './dto/pagination-moneda.dto';
@@ -17,17 +17,16 @@ export class MonedaService {
   //Crear una moneda
     async create(
       createMonedaDto: CreateMonedaDto,
-    ): Promise<Moneda | { message: string }> {
+    ): Promise<Moneda> {
       const existMoneda = await this.monedaModel.findOne({
         tipo_moneda: createMonedaDto.tipo_moneda,
       });
   
       if (existMoneda) {
-        return { message: 'Ya existe la moneda' };
+        throw new BadRequestException('Ya existe la moneda');
       }
       const nuevoMoneda = new this.monedaModel(createMonedaDto);
-      nuevoMoneda.save();
-      return { message: 'La moneda se creo exitosamente' };
+      return nuevoMoneda.save();
     }
 
 
@@ -68,10 +67,10 @@ export class MonedaService {
   
 
   // Buscar una moneda
-    async findOne(id:string): Promise<Moneda | { message: string}> {
+    async findOne(id:string): Promise<Moneda> {
     const mon = await this.monedaModel.findById(id).exec();
     if (!mon){
-      return {message:'No existe la moneda'}
+      throw new NotFoundException('No se encontró la moneda');
     }
     return mon;
    }
@@ -79,11 +78,11 @@ export class MonedaService {
 
 
    //Actualizar una moneda
-    async update( id: string, UpdateClienteDto: UpdateMonedaDto): Promise<Moneda | { message: string}> {
+    async update( id: string, UpdateClienteDto: UpdateMonedaDto): Promise<Moneda> {
     const updatemon = await this.monedaModel.findByIdAndUpdate(id, UpdateClienteDto, {new :true}).exec();
   
     if (!updatemon) {
-      return{ message: `La moneda no existe`}
+      throw new NotFoundException('No se encontró la moneda');
     }
     return updatemon;
   }
@@ -92,12 +91,11 @@ export class MonedaService {
 
   //Eliminar una moneda
   
-   async remove(id: string): Promise<Moneda| {message: string}>{
+   async remove(id: string): Promise<void>{
     const deletemon = await this.monedaModel.findByIdAndDelete(id);
   
     if (!deletemon) {
-      return { message:"La moneda no existe"}
+      throw new NotFoundException('No se encontró la moneda');
     }
-    return { message:"La moneda se elimino correctamente"};
   }
 }

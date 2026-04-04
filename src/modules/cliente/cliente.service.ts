@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { PaginationClienteDto, PaginatedResponse } from './dto/pagination-cliente.dto';
@@ -17,17 +17,16 @@ export class ClienteService {
   //Crear un cliente
   async create(
     createClienteDto: CreateClienteDto,
-  ): Promise<Cliente | { message: string }> {
+  ): Promise<Cliente> {
     const existCliente = await this.clienteModel.findOne({
       id_cliente: createClienteDto.id_cliente,
     });
 
     if (existCliente) {
-      return { message: 'Ya existe el cliente' };
+      throw new BadRequestException('Ya existe el cliente');
     }
     const nuevoCliente = new this.clienteModel(createClienteDto);
-    nuevoCliente.save();
-    return { message: 'El cliente se creo exitosamente' };
+    return nuevoCliente.save();
   }
 
 
@@ -70,33 +69,32 @@ export class ClienteService {
 
 
   // Buscar un cliente
-  async findOne(id:string): Promise<Cliente | { message: string}> {
+  async findOne(id:string): Promise<Cliente> {
   const cli = await this.clienteModel.findById(id).exec();
   if (!cli){
-    return {message:'No existe el cliente'}
+    throw new NotFoundException('No se encontró el cliente');
   }
   return cli;
  }
 
 
  //Actualizar un cliente
-  async update( id: string, UpdateClienteDto: UpdateClienteDto): Promise<Cliente | { message: string}> {
+  async update( id: string, UpdateClienteDto: UpdateClienteDto): Promise<Cliente> {
   const updatecli = await this.clienteModel.findByIdAndUpdate(id, UpdateClienteDto, {new :true}).exec();
 
   if (!updatecli) {
-    return{ message: `El cliente no existe`}
+    throw new NotFoundException('No se encontró el cliente');
   }
   return updatecli;
 }
 
 //Eliminar un cliente
 
- async remove(id: string): Promise<Cliente| {message: string}>{
+ async remove(id: string): Promise<void>{
   const deletecli = await this.clienteModel.findByIdAndDelete(id);
 
   if (!deletecli) {
-    return { message:"El cliente no existe"}
+    throw new NotFoundException('No se encontró el cliente');
   }
-  return { message:"El cliente se elimino correctamente"};
 }
 }

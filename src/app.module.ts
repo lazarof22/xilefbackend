@@ -8,7 +8,8 @@ import { ProductoModule } from './modules/producto/producto.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MonedaModule } from './modules/moneda/moneda.module';
 import { KardexModule } from './modules/kardex/kardex.module';
-import { VentaModule } from './venta/venta.module';
+import { VentaModule } from './modules/venta/venta.module';
+
 
 @Module({
   imports: [
