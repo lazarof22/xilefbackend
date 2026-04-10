@@ -1,6 +1,5 @@
 import { Controller, Get, Post, Body, Request, UseGuards, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { PaginationUsuarioDto } from './dto/pagination-usuario.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 
 
@@ -19,8 +18,8 @@ export class AuthController {
   }
 
    @Get()
-  findAll(@Query() paginationDto: PaginationUsuarioDto) {
-    return this.authService.findAll(paginationDto);
+  findAll() {
+    return this.authService.findAll();
   }
 
   @UseGuards(LocalAuthGuard)

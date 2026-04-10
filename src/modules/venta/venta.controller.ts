@@ -2,7 +2,6 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestj
 import { VentaService } from './venta.service';
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateVentaDto } from './dto/update-venta.dto';
-import { PaginationVentaDto } from './dto/pagination-venta.dto';
 import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 
 @Controller('venta')
@@ -20,13 +19,9 @@ export class VentaController {
   @ApiOperation({ summary: 'Obtener todos las ventas' })
   @ApiResponse({ status: 201, description: 'Ventas obtenidas con exito' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'sortBy', required: false, type: String })
-  @ApiQuery({ name: 'sortOrder', required: false, enum: ['asc', 'desc'] })
   @Get()
-  findAll(@Query() paginationDto: PaginationVentaDto) {
-    return this.ventaService.findAll(paginationDto);
+  findAll() {
+    return this.ventaService.findAll();
   }
 
   @ApiOperation({ summary: 'Obtener una venta' })

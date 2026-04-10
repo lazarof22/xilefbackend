@@ -4,7 +4,6 @@ import { Model } from 'mongoose';
 
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateVentaDto } from './dto/update-venta.dto';
-import { PaginationVentaDto, PaginatedResponse } from './dto/pagination-venta.dto';
 import { Venta } from './schema/venta.schema';
 import { Cliente } from '../cliente/schemas/cliente.schema';
 import { Producto } from '../producto/schemas/producto.schema';
@@ -56,42 +55,13 @@ export class VentaService {
     return venta.save();
   }
 
-  async findAll(paginationDto?: PaginationVentaDto): Promise<PaginatedResponse<Venta> | Venta[]> {
-    // Si no hay parámetros de paginación, retornar todas las ventas (para compatibilidad)
-    if (!paginationDto) {
-      return this.ventaModel
-        .find()
-        .populate('clienteId', 'nombre email telefono')
-        .populate('productos.productoId', 'nombre_producto precio')
-        .sort({ createdAt: -1 })
-        .exec();
-    }
-
-    const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = paginationDto;
-    const skip = (page - 1) * limit;
-    const sortDirection = sortOrder === 'asc' ? 1 : -1;
-
-    const [data, total] = await Promise.all([
-      this.ventaModel
-        .find()
-        .populate('clienteId', 'nombre email telefono')
-        .populate('productos.productoId', 'nombre precio')
-        .sort({ [sortBy]: sortDirection })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
-      this.ventaModel.countDocuments(),
-    ]);
-
-    const totalPages = Math.ceil(total / limit);
-
-    return {
-      data,
-      total,
-      page,
-      limit,
-      totalPages,
-    };
+  async findAll(): Promise<Venta[]> {
+    return this.ventaModel
+      .find()
+      .populate('clienteId', 'nombre email telefono')
+      .populate('productos.productoId', 'nombre_producto precio')
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
   async findOne(id: string): Promise<Venta> {

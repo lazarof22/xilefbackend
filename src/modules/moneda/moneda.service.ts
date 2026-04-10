@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateMonedaDto } from './dto/create-moneda.dto';
 import { UpdateMonedaDto } from './dto/update-moneda.dto';
-import { PaginationMonedaDto, PaginatedResponse } from './dto/pagination-moneda.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Moneda } from './schema/moneda.schem';
 import { Model } from 'mongoose';
@@ -31,38 +30,11 @@ export class MonedaService {
 
 
   //Buscar todas las monedas
-    async findAll(paginationDto?: PaginationMonedaDto): Promise<PaginatedResponse<Moneda> | Moneda[]> {
-      // Si no hay parámetros de paginación, retornar todas las monedas (para compatibilidad)
-      if (!paginationDto) {
-        return this.monedaModel
-          .find()
-          .sort({ createdAt: -1 })
-          .exec();
-      }
-
-      const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = paginationDto;
-      const skip = (page - 1) * limit;
-      const sortDirection = sortOrder === 'asc' ? 1 : -1;
-
-      const [data, total] = await Promise.all([
-        this.monedaModel
-          .find()
-          .sort({ [sortBy]: sortDirection })
-          .skip(skip)
-          .limit(limit)
-          .exec(),
-        this.monedaModel.countDocuments(),
-      ]);
-
-      const totalPages = Math.ceil(total / limit);
-
-      return {
-        data,
-        total,
-        page,
-        limit,
-        totalPages,
-      };
+    async findAll(): Promise<Moneda[]> {
+      return this.monedaModel
+        .find()
+        .sort({ createdAt: -1 })
+        .exec();
     }
   
 

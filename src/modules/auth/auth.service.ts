@@ -4,7 +4,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import { JWT_SECRET, JWT_EXPIRES_IN } from './constants/constants';
-import { PaginationUsuarioDto, PaginatedResponse } from './dto/pagination-usuario.dto';
 import { Usuario } from './schemas/usuario.schema';
 
 @Injectable()
@@ -15,40 +14,12 @@ export class AuthService {
   ) { }
 
 
-  async findAll(paginationDto?: PaginationUsuarioDto): Promise<PaginatedResponse<Usuario> | Usuario[]> {
-    // Si no hay parámetros de paginación, retornar todas las usuarios (para compatibilidad)
-    if (!paginationDto) {
-      return this.userModel
-        .find()
-        .select('-contraseña')
-        .sort({ createdAt: -1 })
-        .exec();
-    }
-
-    const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = paginationDto;
-    const skip = (page - 1) * limit;
-    const sortDirection = sortOrder === 'asc' ? 1 : -1;
-
-    const [data, total] = await Promise.all([
-      this.userModel
-        .find()
-        .select('-contraseña')
-        .sort({ [sortBy]: sortDirection })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
-      this.userModel.countDocuments(),
-    ]);
-
-    const totalPages = Math.ceil(total / limit);
-
-    return {
-      data,
-      total,
-      page,
-      limit,
-      totalPages,
-    };
+  async findAll(): Promise<Usuario[]> {
+    return this.userModel
+      .find()
+      .select('-contraseña')
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
   async register(nombre_usuario: string, correo_usuario: string, contraseña: string, rol?: string): Promise<{ access_token: string }> {

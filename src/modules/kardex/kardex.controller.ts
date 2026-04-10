@@ -2,7 +2,6 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestj
 import { KardexService } from './kardex.service';
 import { CreateKardexDto } from './dto/create-kardex.dto';
 import { UpdateKardexDto } from './dto/update-kardex.dto';
-import { PaginationKardexDto } from './dto/pagination-kardex.dto';
 import { ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags()
@@ -22,13 +21,9 @@ export class KardexController {
   @ApiOperation({ summary: 'Obtener todos los kardex' })
   @ApiResponse({ status: 201, description: 'Kardex obtenidos con exito' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'sortBy', required: false, type: String })
-  @ApiQuery({ name: 'sortOrder', required: false, enum: ['asc', 'desc'] })
   @Get()
-  findAll(@Query() paginationDto: PaginationKardexDto) {
-    return this.kardexService.findAll(paginationDto);
+  findAll() {
+    return this.kardexService.findAll();
   }
 
 
