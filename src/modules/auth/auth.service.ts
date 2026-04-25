@@ -4,7 +4,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import { JWT_SECRET, JWT_EXPIRES_IN } from './constants/constants';
-import { Usuario } from './schemas/usuario.schema';
+import { Usuario } from './schemas/empleado.schema';
+import { CreateAuthDto } from './dto/create-auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -22,18 +23,23 @@ export class AuthService {
       .exec();
   }
 
-  async register(nombre_usuario: string, correo_usuario: string, contraseña: string, rol?: string): Promise<{ access_token: string }> {
+  async register(createAuthDto: CreateAuthDto): Promise<{ access_token: string }> {
+    const { ci_empleado, nombre_empleado, correo_empleado, contraseña, departamento, cargo, salario, rol } = createAuthDto;
     const hashedPassword = await bcrypt.hash(contraseña, 10);
     const user = new this.userModel({
-      nombre_usuario,
-      correo_usuario,
+      ci_empleado,
+      nombre_empleado,
+      correo_empleado,
       contraseña: hashedPassword,
+      departamento,
+      cargo,
+      salario,
       rol: rol || 'empleado',
     });
     const savedUser = await user.save();
 
     // Genera el token igual que en login
-    const payload = {correo_usuario: savedUser.correo_usuario, contraseña: savedUser._id, role: savedUser.rol };
+    const payload = { correo_empleado: savedUser.correo_empleado, sub: savedUser._id, rol: savedUser.rol, nombre_empleado: savedUser.nombre_empleado };
     const access_token = this.jwtService.sign(payload, {
       secret: JWT_SECRET,
       expiresIn: JWT_EXPIRES_IN,
@@ -42,8 +48,8 @@ export class AuthService {
     return { access_token };
   }
 
-  async validateUser(correo_usuario: string, contraseña: string): Promise<any> {
-    const user = await this.userModel.findOne({ correo_usuario });
+  async validateUser(correo_empleado: string, contraseña: string): Promise<any> {
+    const user = await this.userModel.findOne({ correo_empleado });
     if (user && (await bcrypt.compare(contraseña, user.contraseña))) {
       const { contraseña, ...result } = user.toObject();
       return result;
@@ -52,7 +58,7 @@ export class AuthService {
   }
 
   async login(usuario: any) {
-    const payload = { correo_usuario: usuario.correo_usuario, sub: usuario._id, rol: usuario.rol ,nombre_usuario: usuario.nombre_usuario};
+    const payload = { correo_empleado: usuario.correo_empleado, sub: usuario._id, rol: usuario.rol, nombre_empleado: usuario.nombre_empleado };
     return {
       access_token: this.jwtService.sign(payload, {
         secret: JWT_SECRET,

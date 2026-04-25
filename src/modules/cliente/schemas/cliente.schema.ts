@@ -8,22 +8,22 @@ export type ClienteDocument = HydratedDocument<Cliente>;
 @Schema()
 export class Cliente {
     @Prop({required:true, unique: true })
-    id_cliente: string; //ci???
+    id_cliente!: string; //ci???
 
     @Prop({ required: true})
-    nombre_cliente: string;
+    nombre_cliente!: string;
 
     @Prop({required:true})
-    telefono_cliente: string;
+    telefono_cliente!: string;
 
     @Prop({required:true})
-    email_cliente:string;
+    email_cliente!: string;
 
     @Prop({required:true})
-    direccion_cliente:string;
+    direccion_cliente!: string;
 
     @Prop({required:true})
-    tipo_cliente:string;
+    tipo_cliente!: string;
 
 }
 

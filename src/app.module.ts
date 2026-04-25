@@ -4,11 +4,16 @@ import { AppService } from './app.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClienteModule } from './modules/cliente/cliente.module';
-import { ProductoModule } from './modules/producto/producto.module';
+import { ProductoModule } from './modules/inventario/producto/producto.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { MonedaModule } from './modules/moneda/moneda.module';
-import { KardexModule } from './modules/kardex/kardex.module';
-import { VentaModule } from './modules/venta/venta.module';
+import { KardexModule } from './modules/inventario/kardex/kardex.module';
+import { VentaModule } from './modules/inventario/venta/venta.module';
+import { MonedaModule } from './modules/nomencladores/moneda/moneda.module';
+import { ActivoFijoModule } from './modules/contabilidad/activo_fijo/activo_fijo.module';
+import { AreaModule } from './modules/nomencladores/area/area.module';
+import { CategoriaModule } from './modules/nomencladores/categoria/categoria.module';
+import { EstadoModule } from './modules/nomencladores/estado/estado.module';
+import { PlanCuentasModule } from './modules/contabilidad/plan_cuentas/plan_cuentas.module';
 
 
 @Module({
@@ -24,10 +29,15 @@ import { VentaModule } from './modules/venta/venta.module';
       inject: [ConfigService],
     }),
       //Iniciacion de los modulos
+    ActivoFijoModule,
+    AreaModule,
     AuthModule,
+    CategoriaModule,
     ClienteModule,
+    EstadoModule,
     KardexModule,
     MonedaModule,
+    PlanCuentasModule,
     ProductoModule,
     VentaModule,
 
