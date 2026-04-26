@@ -44,6 +44,7 @@ export class KardexService {
         productoId: new Types.ObjectId(productoId),
         tipo,
         cantidad,
+        stock: nuevoStock,
         motivo
       })
     ]);
@@ -57,7 +58,7 @@ export class KardexService {
   async findAll(): Promise<Kardex[]> {
     return this.kardexModel
       .find()
-      .populate({ path: 'productoId', select: 'nombre_producto stock_inicial' })
+      .populate({ path: 'productoId', select: 'nombre_producto' })
       .sort({ createdAt: -1 })
       .exec();
   }
@@ -66,7 +67,7 @@ export class KardexService {
   async findAllSalidas(): Promise<Kardex[]> {
     return this.kardexModel
       .find({ tipo: KardexTipo.SALIDA })
-      .populate({ path: 'productoId', select: 'nombre_producto stock_inicial' })
+      .populate({ path: 'productoId', select: 'nombre_producto' })
       .sort({ createdAt: -1 })
       .exec();
   }
@@ -75,7 +76,7 @@ export class KardexService {
   async findOne(id: string): Promise<Kardex> {
     const kar = await this.kardexModel
       .findById(id)
-      .populate({ path: 'productoId', select: 'nombre_producto stock_inicial' })
+      .populate({ path: 'productoId', select: 'nombre_producto' })
       .exec();
 
     if (!kar) {

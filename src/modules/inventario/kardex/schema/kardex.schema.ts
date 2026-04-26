@@ -24,6 +24,9 @@ export class Kardex {
     @Prop({ required: true, min: 1 })
     cantidad!: number;
 
+    @Prop({ required: true, min: 0 })
+    stock!: number;
+
     @Prop({ required: true })
     motivo!: string;
 }
