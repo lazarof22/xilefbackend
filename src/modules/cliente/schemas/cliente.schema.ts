@@ -13,10 +13,10 @@ export class Cliente {
     @Prop({ required: true})
     nombre_cliente!: string;
 
-    @Prop({required:true})
+    @Prop({required:true, unique:true})
     telefono_cliente!: string;
 
-    @Prop({required:true})
+    @Prop({required:true, unique:true})
     email_cliente!: string;
 
     @Prop({required:true})

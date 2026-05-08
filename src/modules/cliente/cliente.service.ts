@@ -14,19 +14,34 @@ export class ClienteService {
 
 
   //Crear un cliente
-  async create(
-    createClienteDto: CreateClienteDto,
-  ): Promise<Cliente> {
-    const existCliente = await this.clienteModel.findOne({
-      id_cliente: createClienteDto.id_cliente,
+  async create(createClienteDto: CreateClienteDto): Promise<Cliente> {
+    // Validar id_cliente
+    const existClienteById = await this.clienteModel.findOne({
+        id_cliente: createClienteDto.id_cliente,
     });
-
-    if (existCliente) {
-      throw new BadRequestException('Ya existe el cliente');
+    if (existClienteById) {
+        throw new BadRequestException('Ya existe un cliente con ese ID');
     }
+
+    // Validar teléfono
+    const existClienteByTelefono = await this.clienteModel.findOne({
+        telefono_cliente: createClienteDto.telefono_cliente,
+    });
+    if (existClienteByTelefono) {
+        throw new BadRequestException('Ya existe un cliente con ese número de teléfono');
+    }
+
+    // Validar email
+    const existClienteByEmail = await this.clienteModel.findOne({
+        email_cliente: createClienteDto.email_cliente,
+    });
+    if (existClienteByEmail) {
+        throw new BadRequestException('Ya existe un cliente con ese correo electrónico');
+    }
+
     const nuevoCliente = new this.clienteModel(createClienteDto);
     return nuevoCliente.save();
-  }
+}
 
 
 

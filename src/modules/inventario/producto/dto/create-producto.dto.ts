@@ -1,4 +1,5 @@
 import { IsMongoId, IsNotEmpty, IsNumber, IsString } from "class-validator";
+import { Types } from "mongoose";
 
 export class CreateProductoDto {
 
@@ -12,7 +13,7 @@ export class CreateProductoDto {
 
     @IsMongoId()
     @IsNotEmpty()
-    categoria_producto!: string;
+    categoria_producto!: Types.ObjectId;
 
 
     @IsNotEmpty()
@@ -36,5 +37,5 @@ export class CreateProductoDto {
 
     @IsMongoId()
     @IsNotEmpty()
-    estado!: string;
+    estado!: Types.ObjectId;
 }
