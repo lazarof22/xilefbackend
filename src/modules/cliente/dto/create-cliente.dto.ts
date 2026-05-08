@@ -4,26 +4,26 @@ export class CreateClienteDto {
 
     @IsString()
     @IsNotEmpty()
-    id_cliente: string;
+    id_cliente!: string;
 
     @IsString()
     @IsNotEmpty()
-    nombre_cliente: string;
+    nombre_cliente!: string;
 
     @IsString()
     @IsNotEmpty()
-    telefono_cliente: string;
+    telefono_cliente!: string;
 
     @IsString()
     @IsNotEmpty()
     @IsEmail()
-    email_cliente: string;
+    email_cliente!: string;
 
     @IsString()
     @IsNotEmpty()
-    direccion_cliente: string;
+    direccion_cliente!: string;
 
     @IsString()
     @IsNotEmpty()
-    tipo_cliente: string;
+    tipo_cliente!: string;
 }

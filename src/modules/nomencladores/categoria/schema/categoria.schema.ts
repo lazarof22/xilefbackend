@@ -3,18 +3,13 @@ import { HydratedDocument } from "mongoose";
 
 export type CategoriaDocument = HydratedDocument<Categoria>;
 
-export enum ProductoCategoria {
-    TECNOLOGÍAS = 'tecnologías',
-    ELECTRODOMÉSTICOS = 'electrodomésticos',
-    ACCESORIOS = 'accesorios',
-    OFICINA = 'oficina'
-}
+
 
 @Schema()
 export class Categoria {
 
-    @Prop({ required: true , enum:ProductoCategoria})
-    nombre_categoria!: ProductoCategoria;
+    @Prop({ required: true ,unique:true})
+    nombre_categoria!: string;
 }
 
 export const CategoriaSchema = SchemaFactory.createForClass(Categoria);

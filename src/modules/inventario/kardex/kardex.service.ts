@@ -29,8 +29,8 @@ export class KardexService {
     }
 
     if (cantidad <= 0) {
-    throw new BadRequestException('La cantidad debe ser mayor a 0');
-  }
+      throw new BadRequestException('La cantidad debe ser mayor a 0');
+    }
 
     if (tipo === KardexTipo.SALIDA && producto.stock_inicial < cantidad) {
       throw new BadRequestException('Stock insuficiente');

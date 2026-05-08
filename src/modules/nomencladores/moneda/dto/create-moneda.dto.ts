@@ -4,5 +4,5 @@ export class CreateMonedaDto {
 
     @IsString()
     @IsNotEmpty()
-    tipo_moneda: string;
+    tipo_moneda!: string;
 }

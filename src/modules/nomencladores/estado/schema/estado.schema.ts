@@ -4,16 +4,13 @@ import { HydratedDocument } from "mongoose";
 export type EstadoDocument = HydratedDocument<Estado>;
 
 
-export enum EstadoTipo {
-    ACTIVO = 'activo',
-    INACTIVO = 'inactivo',
-}
+
 
 @Schema()
 export class Estado {
 
-    @Prop({ required: true, enum: EstadoTipo })
-    estado!: EstadoTipo;
+    @Prop({ required: true, unique:true })
+    estado!: string;
 }
 
 export const EstadoSchema = SchemaFactory.createForClass(Estado);

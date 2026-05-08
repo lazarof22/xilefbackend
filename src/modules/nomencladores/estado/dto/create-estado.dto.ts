@@ -1,7 +1,10 @@
-import { IsEnum } from "class-validator";
-import { EstadoTipo } from "../schema/estado.schema";
+import { IsNotEmpty, IsString } from "class-validator";
+
 
 export class CreateEstadoDto {
-      @IsEnum(EstadoTipo)
-        estado!: EstadoTipo;
+
+
+  @IsString()
+  @IsNotEmpty()
+  estado!: string;
 }
