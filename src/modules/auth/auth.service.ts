@@ -6,11 +6,14 @@ import * as bcrypt from 'bcryptjs';
 import { JWT_SECRET, JWT_EXPIRES_IN } from './constants/constants';
 import { Usuario } from './schemas/empleado.schema';
 import { CreateAuthDto } from './dto/create-auth.dto';
+import { CargoEmpleado } from '../nomencladores/cargo_empleado/schema/cargo_empleado.schema';
+import { Departamento } from '../nomencladores/departamento/schema/departamento.schema';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(Usuario.name) private userModel: Model<Usuario>,
+    @InjectModel(Departamento.name) private departamentoModel: Model<Departamento>,@InjectModel(CargoEmpleado.name) private cargoModel: Model<CargoEmpleado>,
     private jwtService: JwtService,
   ) { }
 

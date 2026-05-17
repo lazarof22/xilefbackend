@@ -12,7 +12,7 @@ export class EstadoService {
      } 
  
  
-   //Crear una moneda
+   //Crear una estado
      async create(
        createEstadoDto: CreateEstadoDto,
      ): Promise<Estado> {
@@ -28,7 +28,7 @@ export class EstadoService {
      }
  
  
-   //Buscar todas las monedas
+   //Buscar todas los estados
      async findAll(): Promise<Estado[]> {
        return this.estadoModel
          .find()
@@ -37,7 +37,7 @@ export class EstadoService {
      }
    
  
-   // Buscar una moneda
+   // Buscar un estado
      async findOne(id:string): Promise<Estado> {
      const est = await this.estadoModel.findById(id).exec();
      if (!est){
@@ -48,7 +48,7 @@ export class EstadoService {
  
  
  
-    //Actualizar una moneda
+    //Actualizar un estado
      async update( id: string, updateEstadoDto: UpdateEstadoDto): Promise<Estado> {
      const updatest = await this.estadoModel.findByIdAndUpdate(id, updateEstadoDto, {new :true}).exec();
    
@@ -60,7 +60,7 @@ export class EstadoService {
  
  
  
-   //Eliminar una moneda
+   //Eliminar un estado
    
     async remove(id: string): Promise<void>{
      const deletest = await this.estadoModel.findByIdAndDelete(id);

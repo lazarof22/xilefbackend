@@ -25,11 +25,11 @@ export class Usuario {
   @Prop({ required: true, select: false })
   contraseña!: string;
 
-  @Prop({ required: true, })
-  departamento!: string;
+  @Prop({ type: Types.ObjectId, ref: 'Departamento', required: true })
+  departamento!: Types.ObjectId;
 
-  @Prop({ required: true })
-  cargo!: string;
+  @Prop({ type: Types.ObjectId, ref: 'CargoEmpleado', required: true})
+  cargo!: Types.ObjectId;
 
   @Prop({ required: true })
   salario!: number;

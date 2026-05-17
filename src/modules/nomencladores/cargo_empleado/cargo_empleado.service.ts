@@ -1,26 +1,72 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCargoEmpleadoDto } from './dto/create-cargo_empleado.dto';
 import { UpdateCargoEmpleadoDto } from './dto/update-cargo_empleado.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { CargoEmpleado } from './schema/cargo_empleado.schema';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class CargoEmpleadoService {
-  create(createCargoEmpleadoDto: CreateCargoEmpleadoDto) {
-    return 'This action adds a new cargoEmpleado';
+  constructor(@InjectModel(CargoEmpleado.name) private cargoModel: Model<CargoEmpleado>) {
+
   }
 
-  findAll() {
-    return `This action returns all cargoEmpleado`;
+
+  //Crear una cargo
+  async create(
+    createCargoEmpleadoDto: CreateCargoEmpleadoDto,
+  ): Promise<CargoEmpleado> {
+    const existCargo = await this.cargoModel.findOne({
+      estado: createCargoEmpleadoDto.nombre_cargo,
+    });
+
+    if (existCargo) {
+      throw new BadRequestException('Ya existe el cargo');
+    }
+    const nuevoCargo = new this.cargoModel(createCargoEmpleadoDto);
+    return nuevoCargo.save();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} cargoEmpleado`;
+
+  //Buscar todas los cargos
+  async findAll(): Promise<CargoEmpleado[]> {
+    return this.cargoModel
+      .find()
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
-  update(id: number, updateCargoEmpleadoDto: UpdateCargoEmpleadoDto) {
-    return `This action updates a #${id} cargoEmpleado`;
+
+  // Buscar un cargo
+  async findOne(id: string): Promise<CargoEmpleado> {
+    const car = await this.cargoModel.findById(id).exec();
+    if (!car) {
+      throw new NotFoundException('No se encontró el cargo');
+    }
+    return car;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} cargoEmpleado`;
+
+
+  //Actualizar un cargo
+  async update(id: string, updateCargoEmpleadoDto: UpdateCargoEmpleadoDto): Promise<CargoEmpleado> {
+    const updatecargo = await this.cargoModel.findByIdAndUpdate(id, updateCargoEmpleadoDto, { new: true }).exec();
+
+    if (!updatecargo) {
+      throw new NotFoundException('No se encontró el cargo');
+    }
+    return updatecargo;
+  }
+
+
+
+  //Eliminar un cargo
+
+  async remove(id: string): Promise<void> {
+    const deletecargo = await this.cargoModel.findByIdAndDelete(id);
+
+    if (!deletecargo) {
+      throw new NotFoundException('No se encontró el cargo');
+    }
   }
 }

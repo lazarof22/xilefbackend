@@ -14,6 +14,8 @@ import { AreaModule } from './modules/nomencladores/area/area.module';
 import { CategoriaModule } from './modules/nomencladores/categoria/categoria.module';
 import { EstadoModule } from './modules/nomencladores/estado/estado.module';
 import { PlanCuentasModule } from './modules/contabilidad/plan_cuentas/plan_cuentas.module';
+import { DepartamentoModule } from './modules/nomencladores/departamento/departamento.module';
+import { CargoEmpleadoModule } from './modules/nomencladores/cargo_empleado/cargo_empleado.module';
 
 
 @Module({
@@ -33,7 +35,9 @@ import { PlanCuentasModule } from './modules/contabilidad/plan_cuentas/plan_cuen
     AreaModule,
     AuthModule,
     CategoriaModule,
+    CargoEmpleadoModule,
     ClienteModule,
+    DepartamentoModule,
     EstadoModule,
     KardexModule,
     MonedaModule,

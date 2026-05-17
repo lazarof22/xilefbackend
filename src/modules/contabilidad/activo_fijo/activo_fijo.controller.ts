@@ -2,7 +2,9 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { ActivoFijoService } from './activo_fijo.service';
 import { CreateActivoFijoDto } from './dto/create-activo_fijo.dto';
 import { UpdateActivoFijoDto } from './dto/update-activo_fijo.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Activo Fijo')
 @Controller('activo-fijo')
 export class ActivoFijoController {
   constructor(private readonly activoFijoService: ActivoFijoService) {}
