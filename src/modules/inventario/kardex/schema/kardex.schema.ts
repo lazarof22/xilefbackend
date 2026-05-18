@@ -6,9 +6,10 @@ export type KardexDocument = HydratedDocument<Kardex>;
 export enum KardexTipo {
     ENTRADA = 'entrada',
     SALIDA = 'salida',
+    VENTA = 'venta',
 }
 
-@Schema()
+@Schema({ timestamps: true })
 
 export class Kardex {
 

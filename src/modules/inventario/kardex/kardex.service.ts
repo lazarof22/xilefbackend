@@ -59,7 +59,7 @@ export class KardexService {
     return this.kardexModel
       .find()
       .populate({ path: 'productoId', select: 'nombre_producto' })
-      .sort({ createdAt: -1 })
+      .sort({ fecha: -1, _id: -1 })
       .exec();
   }
 
@@ -68,7 +68,7 @@ export class KardexService {
     return this.kardexModel
       .find({ tipo: KardexTipo.SALIDA })
       .populate({ path: 'productoId', select: 'nombre_producto' })
-      .sort({ createdAt: -1 })
+      .sort({ fecha: -1, _id: -1 })
       .exec();
   }
 

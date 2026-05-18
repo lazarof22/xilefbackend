@@ -5,6 +5,7 @@ import { Venta, VentaSchema } from './schema/venta.schema';
 import { Cliente, ClienteSchema } from 'src/modules/cliente/schemas/cliente.schema';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Producto, ProductoSchema } from '../../inventario/producto/schemas/producto.schema';
+import { Kardex, KardexSchema } from 'src/modules/inventario/kardex/schema/kardex.schema';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { Producto, ProductoSchema } from '../../inventario/producto/schemas/prod
       { name: Venta.name, schema: VentaSchema },
       { name: Cliente.name, schema: ClienteSchema },
       { name: Producto.name, schema: ProductoSchema },
+      { name: Kardex.name, schema: KardexSchema },
     ]),
   ],
   controllers: [VentaController],

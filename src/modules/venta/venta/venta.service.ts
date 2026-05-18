@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateVentaDto } from './dto/update-venta.dto';
 import { Venta } from './schema/venta.schema';
 import { Cliente } from '../../cliente/schemas/cliente.schema';
 import { Producto } from '../../inventario/producto/schemas/producto.schema';
+import { Kardex, KardexTipo } from 'src/modules/inventario/kardex/schema/kardex.schema';
 
 
 @Injectable()
@@ -15,6 +15,7 @@ export class VentaService {
     @InjectModel(Venta.name) private ventaModel: Model<Venta>,
     @InjectModel(Cliente.name) private clienteModel: Model<Cliente>,
     @InjectModel(Producto.name) private productoModel: Model<Producto>,
+    @InjectModel(Kardex.name) private kardexModel: Model<Kardex>,
   ) { }
 
   async create(createVentaDto: CreateVentaDto): Promise<Venta> {
@@ -39,6 +40,15 @@ export class VentaService {
       // Descontar stock
       producto.stock_inicial -= item.cantidad;
       await producto.save();
+
+      // Crear kardex de venta para el producto
+      await this.kardexModel.create({
+        productoId: producto._id,
+        tipo: KardexTipo.VENTA,
+        cantidad: item.cantidad,
+        stock: producto.stock_inicial,
+        motivo: `Venta`,
+      });
 
       // Alerta si quedó bajo del mínimo
       if (producto.stock_inicial < producto.stock_minimo) {
