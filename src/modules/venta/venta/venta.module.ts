@@ -4,7 +4,7 @@ import { VentaController } from './venta.controller';
 import { Venta, VentaSchema } from './schema/venta.schema';
 import { Cliente, ClienteSchema } from 'src/modules/cliente/schemas/cliente.schema';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Producto, ProductoSchema } from '../producto/schemas/producto.schema';
+import { Producto, ProductoSchema } from '../../inventario/producto/schemas/producto.schema';
 
 @Module({
   imports: [

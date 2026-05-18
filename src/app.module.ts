@@ -7,7 +7,7 @@ import { ClienteModule } from './modules/cliente/cliente.module';
 import { ProductoModule } from './modules/inventario/producto/producto.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { KardexModule } from './modules/inventario/kardex/kardex.module';
-import { VentaModule } from './modules/inventario/venta/venta.module';
+import { VentaModule } from './modules/venta/venta/venta.module';
 import { MonedaModule } from './modules/nomencladores/moneda/moneda.module';
 import { ActivoFijoModule } from './modules/contabilidad/activo_fijo/activo_fijo.module';
 import { AreaModule } from './modules/nomencladores/area/area.module';
@@ -16,6 +16,7 @@ import { EstadoModule } from './modules/nomencladores/estado/estado.module';
 import { PlanCuentasModule } from './modules/contabilidad/plan_cuentas/plan_cuentas.module';
 import { DepartamentoModule } from './modules/nomencladores/departamento/departamento.module';
 import { CargoEmpleadoModule } from './modules/nomencladores/cargo_empleado/cargo_empleado.module';
+import { CompraModule } from './modules/compra/compra.module';
 
 
 @Module({
@@ -44,6 +45,7 @@ import { CargoEmpleadoModule } from './modules/nomencladores/cargo_empleado/carg
     PlanCuentasModule,
     ProductoModule,
     VentaModule,
+    CompraModule,
 
   ],
   controllers: [AppController],

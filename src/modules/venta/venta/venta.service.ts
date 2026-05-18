@@ -6,7 +6,7 @@ import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateVentaDto } from './dto/update-venta.dto';
 import { Venta } from './schema/venta.schema';
 import { Cliente } from '../../cliente/schemas/cliente.schema';
-import { Producto } from '../producto/schemas/producto.schema';
+import { Producto } from '../../inventario/producto/schemas/producto.schema';
 
 
 @Injectable()
