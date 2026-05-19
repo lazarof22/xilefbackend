@@ -59,6 +59,8 @@ export class ProductoService {
   async findAll(): Promise<Producto[]> {
     return this.productoModel
       .find()
+      .populate({ path: 'estado', select: 'estado' })
+      .populate({ path: 'categoria_producto', select: 'nombre_categoria' })
       .sort({ createdAt: -1 })
       .exec();
   }
