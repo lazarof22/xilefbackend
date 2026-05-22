@@ -4,10 +4,7 @@ import { HydratedDocument, Types } from "mongoose";
 
 export type VentaDocument = HydratedDocument<Venta>;
 
-export enum VentaTipoPago {
-    EFECTIVO = 'efectivo',
-    TRANSFERENCIA = 'transferencia',
-}
+
 
 @Schema()
 class ItemVenta {
@@ -39,17 +36,14 @@ export class Venta {
     @Prop({ type: [ItemVenta], required: true })
     productos!: ItemVenta[];
 
-    @Prop({ required: true })
-    efectivo_pagado!: number;
-
-    @Prop({ required: true })
-    cambio_devuelto!: number;
+    //@Prop({ required: true })
+    //cambio_devuelto!: number;
 
     @Prop({ required: true })
     impuesto!: number;
 
-    @Prop({ required: true, enum: VentaTipoPago })
-    tipo_pago!: VentaTipoPago;
+    @Prop({ required: true,type: Types.ObjectId, ref: 'Pago' })
+    pago!: Types.ObjectId;
 
 }
 

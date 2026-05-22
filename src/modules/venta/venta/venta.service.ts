@@ -7,6 +7,7 @@ import { Venta } from './schema/venta.schema';
 import { Cliente } from '../../cliente/schemas/cliente.schema';
 import { Producto } from '../../inventario/producto/schemas/producto.schema';
 import { Kardex, KardexTipo } from 'src/modules/inventario/kardex/schema/kardex.schema';
+import { Pago } from '../pago/schema/pago.schema';
 
 
 @Injectable()
@@ -16,6 +17,7 @@ export class VentaService {
     @InjectModel(Cliente.name) private clienteModel: Model<Cliente>,
     @InjectModel(Producto.name) private productoModel: Model<Producto>,
     @InjectModel(Kardex.name) private kardexModel: Model<Kardex>,
+    @InjectModel('Pago') private pagoModel: Model<Pago>
   ) { }
 
   async create(createVentaDto: CreateVentaDto): Promise<Venta> {
@@ -68,8 +70,9 @@ export class VentaService {
   async findAll(): Promise<Venta[]> {
     return this.ventaModel
       .find()
-      .populate('clienteId', 'nombre email telefono')
+      .populate('clienteId', 'nombre_cliente email telefono')
       .populate('productos.productoId', 'nombre_producto precio')
+      .populate('pago')
       .sort({ createdAt: -1 })
       .exec();
   }
@@ -79,6 +82,7 @@ export class VentaService {
       .findById(id)
       .populate('clienteId', 'nombre_cliente')
       .populate('productos.productoId', 'nombre_producto precio codigo')
+      .populate('pago')
       .exec();
 
     if (!venta) {

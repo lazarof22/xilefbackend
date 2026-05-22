@@ -17,6 +17,7 @@ import { PlanCuentasModule } from './modules/contabilidad/plan_cuentas/plan_cuen
 import { DepartamentoModule } from './modules/nomencladores/departamento/departamento.module';
 import { CargoEmpleadoModule } from './modules/nomencladores/cargo_empleado/cargo_empleado.module';
 import { CompraModule } from './modules/compra/compra.module';
+import { PagoModule } from './modules/venta/pago/pago.module';
 
 
 @Module({
@@ -42,6 +43,7 @@ import { CompraModule } from './modules/compra/compra.module';
     EstadoModule,
     KardexModule,
     MonedaModule,
+    PagoModule,
     PlanCuentasModule,
     ProductoModule,
     VentaModule,
