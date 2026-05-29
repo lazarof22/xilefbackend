@@ -76,6 +76,8 @@ export class PagoService {
 
     private calcularTotalDesglose(desglose: any): number {
     return (
+      (desglose.billete5000 || 0) * 5000 +
+      (desglose.billete2000 || 0) * 2000 +
       (desglose.billete1000 || 0) * 1000 +
       (desglose.billete500 || 0) * 500 +
       (desglose.billete200 || 0) * 200 +

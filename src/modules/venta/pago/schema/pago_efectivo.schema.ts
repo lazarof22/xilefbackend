@@ -6,6 +6,13 @@ export type PagoEfectivoDocument = HydratedDocument<PagoEfectivo>;
 
 @Schema()
 export class DesgloseBilletes {
+
+    @Prop({ required: true, default: 0 })
+    billete5000!: number;
+
+    @Prop({ required: true, default: 0 })
+    billete2000!: number;
+
     @Prop({ required: true, default: 0 })
     billete1000!: number;
 

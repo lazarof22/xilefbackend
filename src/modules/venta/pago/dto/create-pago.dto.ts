@@ -2,6 +2,15 @@ import { Type } from "class-transformer";
 import { IsEnum, IsNumber, IsOptional, IsPositive, ValidateNested } from "class-validator";
 
 export class DesgloseBilletesDto {
+
+    @IsNumber()
+    @IsOptional()
+    billete5000?: number = 0;
+
+    @IsNumber()
+    @IsOptional()
+    billete2000?: number = 0;
+
     @IsNumber()
     @IsOptional()
     billete1000?: number = 0;
