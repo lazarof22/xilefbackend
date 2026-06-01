@@ -18,6 +18,9 @@ export class ActivoFijo {
     @Prop({ required: true })
     descripcionActivo!: string;
 
+    @Prop({ required: true, type: Types.ObjectId, ref: 'Empresa' })
+    proveedor!: Types.ObjectId;
+
     @Prop({required:true, type: Types.ObjectId, ref: 'Area'})
     area!:Types.ObjectId
 
@@ -28,7 +31,13 @@ export class ActivoFijo {
     valor!: number;
 
     @Prop({ required: true, type: Types.ObjectId, ref: 'Tasa_Depreciacion' })
-    depreciacionActivo!: number;
+    depreciacionActivo!:number;
+
+    @Prop({ required: true })
+    depreciacionAcumulada!: number;
+
+    @Prop({ required: true })
+    vidaUtil!: number; //años
 
     @Prop({ required: true })
     compra!: string;

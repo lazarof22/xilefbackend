@@ -1,10 +1,17 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
-export enum NaturalezaCuenta{
-    DEUDORA= 'deudora',
-    ACREDORA ='acredora',
+export enum NaturalezaCuenta {
+    DEUDORA = 'deudora',
+    ACREDORA = 'acredora',
 }
+
+export enum TipoCuenta {
+    ACTIVO = 'activo',
+    PASIVO = 'pasivo',
+    GASTO = 'gasto',
+}
+
 export type CuentaDocument = HydratedDocument<Cuenta>;
 
 @Schema()
@@ -16,10 +23,10 @@ export class Cuenta {
     @Prop({ required: true })
     nombreCuenta!: string;
 
-    @Prop({ required: true })
-    tipoCuenta!: string;
+    @Prop({ required: true, enum: TipoCuenta })
+    tipoCuenta!: TipoCuenta;
 
-    @Prop({ required: true , enum: NaturalezaCuenta})
+    @Prop({ required: true, enum: NaturalezaCuenta })
     naturalezaCuenta!: NaturalezaCuenta;
 
     @Prop({ required: true, type: Types.ObjectId, ref: 'Estado' })
