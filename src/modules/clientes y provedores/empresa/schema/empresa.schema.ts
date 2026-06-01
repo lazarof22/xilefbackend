@@ -7,7 +7,9 @@ export type EmpresaDocument = HydratedDocument<Empresa>;
 export enum tipoEmpresa {
     MYPIME = 'mypime',
     TCP = 'tcp',
-    ESTATAL = 'estatal'
+    ESTATAL = 'estatal',
+    PRIVADA = 'privada',
+    COOPERATIVA = 'cooperativa',
 }
 
 
