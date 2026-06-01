@@ -4,7 +4,7 @@ import { Model } from 'mongoose';
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateVentaDto } from './dto/update-venta.dto';
 import { Venta } from './schema/venta.schema';
-import { Cliente } from '../../cliente/schemas/cliente.schema';
+import { Cliente } from '../../clientes y provedores/cliente/schemas/cliente.schema';
 import { Producto } from '../../inventario/producto/schemas/producto.schema';
 import { Kardex, KardexTipo } from 'src/modules/inventario/kardex/schema/kardex.schema';
 import { Pago } from '../pago/schema/pago.schema';

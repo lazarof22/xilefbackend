@@ -7,6 +7,7 @@ export enum KardexTipo {
     ENTRADA = 'entrada',
     SALIDA = 'salida',
     VENTA = 'venta',
+    COMPRA = 'compra'
 }
 
 @Schema({ timestamps: true })

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { VentaService } from './venta.service';
 import { VentaController } from './venta.controller';
 import { Venta, VentaSchema } from './schema/venta.schema';
-import { Cliente, ClienteSchema } from 'src/modules/cliente/schemas/cliente.schema';
+import { Cliente, ClienteSchema } from 'src/modules/clientes y provedores/cliente/schemas/cliente.schema';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Producto, ProductoSchema } from '../../inventario/producto/schemas/producto.schema';
 import { Kardex, KardexSchema } from 'src/modules/inventario/kardex/schema/kardex.schema';
