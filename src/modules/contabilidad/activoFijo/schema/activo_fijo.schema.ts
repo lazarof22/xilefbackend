@@ -24,6 +24,9 @@ export class ActivoFijo {
     @Prop({required:true, type: Types.ObjectId, ref: 'Area'})
     area!:Types.ObjectId
 
+    @Prop({required:true, type: Types.ObjectId, ref: 'Categoria'})
+    categoria!:Types.ObjectId
+
     @Prop({ type: Date})
     fechaCompra!: Date;
     

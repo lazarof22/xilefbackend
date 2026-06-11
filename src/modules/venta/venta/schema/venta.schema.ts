@@ -24,9 +24,6 @@ class ItemVenta {
 @Schema()
 export class Venta {
 
-    @Prop({ type: Types.ObjectId, ref: 'Cliente', required: true })
-    clienteId!: Types.ObjectId;
-
     @Prop({ required: true })
     subtotal_venta!: number;
 
@@ -35,9 +32,6 @@ export class Venta {
 
     @Prop({ type: [ItemVenta], required: true })
     productos!: ItemVenta[];
-
-    //@Prop({ required: true })
-    //cambio_devuelto!: number;
 
     @Prop({ required: true })
     impuesto!: number;

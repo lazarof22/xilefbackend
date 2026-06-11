@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsEnum, IsNumber, IsOptional, IsPositive, ValidateNested } from "class-validator";
+import { IsEnum, IsMongoId, IsNumber, IsOptional, IsPositive, IsString, ValidateNested } from "class-validator";
 
 export class DesgloseBilletesDto {
 
@@ -79,6 +79,11 @@ export class CreatePagoTransferenciaDto extends PagoBaseDto {
 }
 
 export class CreatePagoCreditoDto extends PagoBaseDto {
+
+    @IsMongoId()
+    @IsString()
+    clienteId!: string;
+
 }
 
 export class CreatePagoDto extends PagoBaseDto {
@@ -96,4 +101,8 @@ export class CreatePagoDto extends PagoBaseDto {
     @IsPositive()
     @IsOptional()
     cambio?: number;
+
+    @IsString()
+    @IsOptional()
+    clienteId?: string;
 }

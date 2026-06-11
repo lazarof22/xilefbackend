@@ -6,6 +6,7 @@ import { Pago, PagoSchema } from './schema/pago.schema';
 import { PagoEfectivoSchema, PagoEfectivo } from './schema/pago_efectivo.schema';
 import { PagoCredito, PagoCreditoSchema } from './schema/pago_credito.schema';
 import { PagoTransferencia, PagoTransferenciaSchema } from './schema/pago_transferencia.schema';
+import { Cliente, ClienteSchema } from 'src/modules/clientes y provedores/cliente/schemas/cliente.schema';
 
 @Module({
   controllers: [PagoController],
@@ -20,8 +21,7 @@ import { PagoTransferencia, PagoTransferenciaSchema } from './schema/pago_transf
       { name: PagoTransferencia.name, schema: PagoTransferenciaSchema }
     ]
   },
-
-
+  { name: Cliente.name, schema: ClienteSchema },
   ]),],
   exports: [MongooseModule],
 })

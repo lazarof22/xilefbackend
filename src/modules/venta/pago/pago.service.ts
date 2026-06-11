@@ -1,25 +1,25 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreatePagoDto } from './dto/create-pago.dto';
-import { UpdatePagoDto } from './dto/update-pago.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { Pago } from './schema/pago.schema';
-import { PagoEfectivo, PagoEfectivoDocument } from './schema/pago_efectivo.schema';
+import { PagoEfectivo } from './schema/pago_efectivo.schema';
 import { PagoCredito } from './schema/pago_credito.schema';
 import { PagoTransferencia } from './schema/pago_transferencia.schema';
+import { Cliente } from 'src/modules/clientes y provedores/cliente/schemas/cliente.schema';
 
 @Injectable()
 export class PagoService {
 
     constructor(
-    @InjectModel(Pago.name) private pagoModel: Model<Pago>,
     @InjectModel(PagoEfectivo.name) private pagoEfectivoModel: Model<PagoEfectivo>,
     @InjectModel(PagoCredito.name) private pagoCreditoModel : Model<PagoCredito>,
-    @InjectModel(PagoTransferencia.name) private pagoTransferenciaModel: Model<PagoTransferencia>
+    @InjectModel(PagoTransferencia.name) private pagoTransferenciaModel: Model<PagoTransferencia>,
+    @InjectModel(Cliente.name) private clienteModel: Model<Cliente>,
   ) {}
 
   async create(createPagoDto: CreatePagoDto): Promise<Pago> {
-    const { metodoPago, desglose, monto_pagado, monto_pagar, cambio } = createPagoDto;
+    const { metodoPago, desglose, monto_pagado, monto_pagar, cambio, clienteId } = createPagoDto;
 
     if (metodoPago === 'efectivo') {
       if (!desglose) {
@@ -62,7 +62,16 @@ export class PagoService {
 
       return nuevoPagoTransferencia.save();
     } else if (metodoPago === 'credito') {
+      if (!clienteId) {
+        throw new BadRequestException('El cliente es obligatorio para pagos a crédito');
+      }
+      const cliente = await this.clienteModel.findById(clienteId);
+      if (!cliente) {
+        throw new NotFoundException('No se encontró el cliente');
+      }
+
       const nuevoPagoCredito = new this.pagoCreditoModel({
+        clienteId: cliente._id,
         monto_pagado,
         metodoPago,
       });
