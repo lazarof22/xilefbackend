@@ -19,6 +19,8 @@ import { CompraModule } from './modules/compra/compra/compra.module';
 import { PagoModule } from './modules/venta/pago/pago.module';
 import { EmpresaModule } from './modules/clientes y provedores/empresa/empresa.module';
 import { CuentaModule } from './modules/contabilidad/cuenta/cuenta.module';
+import { PaisModule } from './modules/nomencladores/pais/pais.module';
+import { ConceptoModule } from './modules/contabilidad/concepto/concepto.module';
 
 
 @Module({
@@ -50,6 +52,8 @@ import { CuentaModule } from './modules/contabilidad/cuenta/cuenta.module';
     PagoModule,
     ProductoModule,
     VentaModule,
+    PaisModule,
+    ConceptoModule,
 
 
   ],
