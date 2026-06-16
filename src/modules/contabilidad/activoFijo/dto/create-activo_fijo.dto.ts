@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, IsMongoId, IsDateString, IsEnum, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsMongoId,
+  IsDateString,
+  Min,
+} from 'class-validator';
 
 export class CreateActivoFijoDto {
   @IsString()
@@ -10,40 +18,57 @@ export class CreateActivoFijoDto {
   descripcionActivo!: string;
 
   @IsMongoId()
-  @IsOptional()
-  area?: string;
+  @IsNotEmpty()
+  proveedor!: string;
+
+  @IsMongoId()
+  @IsNotEmpty()
+  area!: string;
 
   @IsDateString()
-  @IsOptional()
-  fechaCompra?: string;
+  @IsNotEmpty()
+  fechaCompra!: string;
 
   @IsNumber()
   @IsNotEmpty()
+  @Min(0)
   valor!: number;
 
   @IsNumber()
   @IsNotEmpty()
   @Min(0)
-  valorResidual!: number;          
+  valorResidual!: number;
 
-  
   @IsMongoId()
-  @IsOptional()
-  depreciacionActivo?: string;
+  @IsNotEmpty()
+  depreciacionActivo!: string;
 
-  @IsString()
-  @IsOptional()
-  compra?: string;
+  @IsMongoId()
+  @IsNotEmpty()
+  moneda!: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @Min(1)
+  vidaUtil!: number;
+
+  @IsMongoId()
+  @IsNotEmpty()
+  pais!: string;
+
+  @IsMongoId()
+  @IsNotEmpty()
+  concepto!: string;
 
   @IsNumber()
   @IsOptional()
   ajusteValor?: number;
 
   @IsMongoId()
-  @IsOptional()
-  movimiento?: string;
+  @IsNotEmpty()
+  movimiento!: string;
 
   @IsMongoId()
-  @IsOptional()
-  estadoActivo?: string;
+  @IsNotEmpty()
+  estadoActivo!: string;
 }

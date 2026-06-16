@@ -70,7 +70,6 @@ export class VentaService {
   async findAll(): Promise<Venta[]> {
     return this.ventaModel
       .find()
-      .populate('clienteId', 'nombre_cliente email telefono')
       .populate('productos.productoId', 'nombre_producto precio')
       .populate('pago')
       .sort({ createdAt: -1 })
@@ -80,7 +79,6 @@ export class VentaService {
   async findOne(id: string): Promise<Venta> {
     const venta = await this.ventaModel
       .findById(id)
-      .populate('clienteId', 'nombre_cliente')
       .populate('productos.productoId', 'nombre_producto precio codigo')
       .populate('pago')
       .exec();
@@ -92,30 +90,8 @@ export class VentaService {
     return venta;
   }
 
-  async update(id: string, updateVentaDto: UpdateVentaDto): Promise<Venta> {
-    let clienteNombre: string | undefined;
-
-    if (updateVentaDto.clienteId) {
-      const cliente = await this.clienteModel.findById(updateVentaDto.clienteId);
-      if (!cliente) {
-        throw new NotFoundException(`Cliente con ID ${updateVentaDto.clienteId} no encontrado`);
-      }
-      clienteNombre = cliente.nombre_cliente;
-    }
-
-    const updateData = clienteNombre
-      ? { ...updateVentaDto, clienteNombre }
-      : updateVentaDto;
-
-    const venta = await this.ventaModel
-      .findByIdAndUpdate(id, updateData, { new: true })
-      .exec();
-
-    if (!venta) {
-      throw new NotFoundException(`Venta con ID ${id} no encontrada`);
-    }
-
-    return venta;
+  async update(id: string, updateVentaDto: UpdateVentaDto) {
+    
   }
 
   async remove(id: string): Promise<void> {
@@ -126,27 +102,5 @@ export class VentaService {
     }
   }
 
-
-  // Métodos adicionales útiles
-
-  async findByCliente(clienteId: string): Promise<Venta[]> {
-    return this.ventaModel
-      .find({ clienteId })
-      .populate('productos.productoId', 'nombre precio')
-      .sort({ createdAt: -1 })
-      .exec();
-  }
-
-  async findByFecha(fechaInicio: Date, fechaFin: Date): Promise<Venta[]> {
-    return this.ventaModel
-      .find({
-        createdAt: {
-          $gte: fechaInicio,
-          $lte: fechaFin,
-        },
-      })
-      .populate('clienteId', 'nombre')
-      .exec();
-  }
 }
 

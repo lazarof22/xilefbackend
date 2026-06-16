@@ -3,7 +3,7 @@ import { HydratedDocument, Types } from "mongoose";
 
 export type ActivoFijoDocument = HydratedDocument<ActivoFijo>;
 
-@Schema()
+@Schema({ timestamps: true })
 export class ActivoFijo {
 
   @Prop({ required: true, unique: true })
@@ -18,7 +18,7 @@ export class ActivoFijo {
   @Prop({ required: true, type: Types.ObjectId, ref: 'Area' })
   area!: Types.ObjectId;
 
-  @Prop({ type: Date })
+  @Prop({ type: Date, required: true })
   fechaCompra!: Date;
 
   @Prop({ required: true })
@@ -30,8 +30,21 @@ export class ActivoFijo {
   @Prop({ required: true, type: Types.ObjectId, ref: 'Tasa_Depreciacion' })
   depreciacionActivo!: Types.ObjectId;
 
-  @Prop({ required: true })
+  // ─── CAMPOS DE DEPRECIACIÓN AUTO-CALCULADOS ──────
+  @Prop({ required: true, default: 0 })
+  depreciacionAnual!: number;        // (valor - valorResidual) / vidaUtil
+
+  @Prop({ required: true, default: 0 })
+  depreciacionMensual!: number;      // depreciacionAnual / 12
+
+  @Prop({ required: true, default: 0 })
   depreciacionAcumulada!: number;
+
+  @Prop({ required: true, default: 0 })
+  valorEnLibros!: number;            // valor - depreciacionAcumulada
+
+  @Prop({ required: true, type: Types.ObjectId, ref: 'Moneda' })
+  moneda!: Types.ObjectId;
 
   @Prop({ required: true })
   vidaUtil!: number;                // Años
@@ -42,13 +55,10 @@ export class ActivoFijo {
   @Prop({ type: Types.ObjectId, ref: 'Concepto', required: true })
   concepto!: Types.ObjectId;
 
-  @Prop({ required: true })
-  compra!: string;
-
-  @Prop({ required: true })
+  @Prop({ required: true, default: 0 })
   ajusteValor!: number;
 
-  @Prop({  type: Types.ObjectId, ref: 'Movimiento', required: true})
+  @Prop({ type: Types.ObjectId, ref: 'Movimiento', required: true })
   movimiento!: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'Estado', required: true })

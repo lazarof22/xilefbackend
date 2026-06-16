@@ -11,6 +11,7 @@ export class ActivoFijoController {
 
   @Post()
   async create(@Body() createActivoFijoDto: CreateActivoFijoDto) {
+    // La depreciación se calcula y guarda automáticamente
     return await this.activoFijoService.create(createActivoFijoDto);
   }
 
@@ -45,7 +46,7 @@ export class ActivoFijoController {
     };
   }
 
-  // ─── DEPRECIACIÓN MENSUAL ─────────────────────────
+  // ─── DEPRECIACIÓN MENSUAL / ACUMULADA ──────────────
   @Get(':id/depreciacion/mensual')
   async calcularDepreciacionMensual(@Param('id') id: string) {
     const activo = await this.activoFijoService.findOne(id);
@@ -63,12 +64,16 @@ export class ActivoFijoController {
       costoAdquisicion: activo.valor,
       valorResidual: activo.valorResidual,
       vidaUtilAnios: activo.vidaUtil,
+      fechaCompra: activo.fechaCompra,
       ...resultado,
     };
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateActivoFijoDto: UpdateActivoFijoDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateActivoFijoDto: UpdateActivoFijoDto,
+  ) {
     return await this.activoFijoService.update(id, updateActivoFijoDto);
   }
 
