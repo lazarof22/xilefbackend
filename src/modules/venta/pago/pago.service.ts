@@ -19,7 +19,7 @@ export class PagoService {
   ) {}
 
   async create(createPagoDto: CreatePagoDto): Promise<Pago> {
-    const { metodoPago, desglose, monto_pagado, monto_pagar, cambio, clienteId } = createPagoDto;
+    const { metodoPago, desglose, monto_pagado, monto_pagar, cambio, clienteId, ciCliente, nombreCliente, referenciaPago } = createPagoDto;
 
     if (metodoPago === 'efectivo') {
       if (!desglose) {
@@ -58,6 +58,9 @@ export class PagoService {
       const nuevoPagoTransferencia = new this.pagoTransferenciaModel({
         monto_pagado,
         metodoPago,
+        ciCliente,
+        nombreCliente,
+        referenciaPago,
       });
 
       return nuevoPagoTransferencia.save();
