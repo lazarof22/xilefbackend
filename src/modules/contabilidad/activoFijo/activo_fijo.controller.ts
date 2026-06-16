@@ -24,6 +24,49 @@ export class ActivoFijoController {
     return await this.activoFijoService.findOne(id);
   }
 
+  // ─── DEPRECIACIÓN ANUAL ─────────────────────────────
+  @Get(':id/depreciacion/anual')
+  async calcularDepreciacionAnual(@Param('id') id: string) {
+    const activo = await this.activoFijoService.findOne(id);
+
+    const depreciacionAnual = this.activoFijoService.calcularDepreciacionLineaRecta(
+      activo.valor,
+      activo.valorResidual,
+      activo.vidaUtil,
+    );
+
+    return {
+      activo: activo.codigoActivo,
+      descripcion: activo.descripcionActivo,
+      costoAdquisicion: activo.valor,
+      valorResidual: activo.valorResidual,
+      vidaUtilAnios: activo.vidaUtil,
+      depreciacionAnual,
+    };
+  }
+
+  // ─── DEPRECIACIÓN MENSUAL ─────────────────────────
+  @Get(':id/depreciacion/mensual')
+  async calcularDepreciacionMensual(@Param('id') id: string) {
+    const activo = await this.activoFijoService.findOne(id);
+
+    const resultado = this.activoFijoService.calcularDepreciacionAcumuladaMensual(
+      activo.valor,
+      activo.valorResidual,
+      activo.vidaUtil,
+      activo.fechaCompra,
+    );
+
+    return {
+      activo: activo.codigoActivo,
+      descripcion: activo.descripcionActivo,
+      costoAdquisicion: activo.valor,
+      valorResidual: activo.valorResidual,
+      vidaUtilAnios: activo.vidaUtil,
+      ...resultado,
+    };
+  }
+
   @Patch(':id')
   async update(@Param('id') id: string, @Body() updateActivoFijoDto: UpdateActivoFijoDto) {
     return await this.activoFijoService.update(id, updateActivoFijoDto);

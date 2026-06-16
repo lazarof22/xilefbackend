@@ -1,44 +1,49 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, IsMongoId, IsDateString, IsEnum } from 'class-validator';
-import { MovimientoActivoFijo } from '../schema/activo_fijo.schema';
+import { IsString, IsNotEmpty, IsNumber, IsOptional, IsMongoId, IsDateString, IsEnum, Min } from 'class-validator';
 
 export class CreateActivoFijoDto {
-	@IsString()
-	@IsNotEmpty()
-	codigoActivo!: string;
+  @IsString()
+  @IsNotEmpty()
+  codigoActivo!: string;
 
-	@IsString()
-	@IsNotEmpty()
-	descripcionActivo!: string;
+  @IsString()
+  @IsNotEmpty()
+  descripcionActivo!: string;
 
-	@IsMongoId()
-	@IsOptional()
-	area?: string;
+  @IsMongoId()
+  @IsOptional()
+  area?: string;
 
-	@IsDateString()
-	@IsOptional()
-	fechaCompra?: string;
+  @IsDateString()
+  @IsOptional()
+  fechaCompra?: string;
 
-	@IsNumber()
-	@IsNotEmpty()
-	valor!: number;
+  @IsNumber()
+  @IsNotEmpty()
+  valor!: number;
 
-	@IsMongoId()
-	@IsOptional()
-	depreciacionActivo?: string;
+  @IsNumber()
+  @IsNotEmpty()
+  @Min(0)
+  valorResidual!: number;          
 
-	@IsString()
-	@IsOptional()
-	compra?: string;
+  
+  @IsMongoId()
+  @IsOptional()
+  depreciacionActivo?: string;
 
-	@IsNumber()
-	@IsOptional()
-	ajusteValor?: number;
+  @IsString()
+  @IsOptional()
+  compra?: string;
 
-	@IsEnum(MovimientoActivoFijo)
-	@IsOptional()
-	movimiento?: MovimientoActivoFijo;
+  @IsNumber()
+  @IsOptional()
+  ajusteValor?: number;
 
-	@IsMongoId()
-	@IsOptional()
-	estadoActivo?: string;
+  @IsMongoId()
+  @IsOptional()
+  movimiento?: string;
+
+  @IsMongoId()
+  @IsOptional()
+  estadoActivo?: string;
 }

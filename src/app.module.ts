@@ -21,6 +21,7 @@ import { EmpresaModule } from './modules/clientes y provedores/empresa/empresa.m
 import { CuentaModule } from './modules/contabilidad/cuenta/cuenta.module';
 import { PaisModule } from './modules/nomencladores/pais/pais.module';
 import { ConceptoModule } from './modules/contabilidad/concepto/concepto.module';
+import { MovimientoModule } from './modules/contabilidad/movimiento/movimiento.module';
 
 
 @Module({
@@ -54,6 +55,7 @@ import { ConceptoModule } from './modules/contabilidad/concepto/concepto.module'
     VentaModule,
     PaisModule,
     ConceptoModule,
+    MovimientoModule,
 
 
   ],
