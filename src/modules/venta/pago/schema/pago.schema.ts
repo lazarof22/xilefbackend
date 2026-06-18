@@ -10,10 +10,7 @@ export type PagoDocument = HydratedDocument<Pago>;
 
 export class Pago {
 
-    @Prop({ required: true })
-    monto_pagado!: number;
-
-    @Prop({ required: true, enum: ['efectivo', 'transferencia', 'credito'] })
+    @Prop({ enum: ['efectivo', 'transferencia', 'credito'] })
     metodoPago!: string;
 }
 

@@ -16,6 +16,9 @@ export class PagoTransferencia extends Pago {
     @Prop({ required: true, unique: true })
     referenciaPago!: string;
 
+    @Prop()
+    monto_pagado!: number;
+
 }
 
 export const PagoTransferenciaSchema = SchemaFactory.createForClass(PagoTransferencia);

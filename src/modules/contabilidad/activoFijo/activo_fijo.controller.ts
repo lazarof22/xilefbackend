@@ -11,7 +11,6 @@ export class ActivoFijoController {
 
   @Post()
   async create(@Body() createActivoFijoDto: CreateActivoFijoDto) {
-    // La depreciación se calcula y guarda automáticamente
     return await this.activoFijoService.create(createActivoFijoDto);
   }
 

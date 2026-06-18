@@ -53,9 +53,6 @@ export class DesgloseBilletesDto {
 }
 
 export class PagoBaseDto {
-    @IsNumber()
-    @IsPositive()
-    monto_pagado!: number;
 
     @IsEnum(['efectivo', 'transferencia', 'credito'])
     metodoPago!: string;
@@ -73,10 +70,16 @@ export class CreatePagoEfectivoDto extends PagoBaseDto {
     @IsNumber()
     @IsPositive()
     cambio!: number;
+
+    @IsNumber()
+    @IsPositive()
+    monto_pagado!: number;
+    
 }
 
 export class CreatePagoTransferenciaDto extends PagoBaseDto {
     @IsString()
+    @IsNotEmpty()
     ciCliente!:string;
 
     @IsString()
@@ -86,21 +89,6 @@ export class CreatePagoTransferenciaDto extends PagoBaseDto {
     @IsString()
     @IsNotEmpty()
     referenciaPago!:string;
-}
-
-export class CreatePagoCreditoDto extends PagoBaseDto {
-
-    @IsMongoId()
-    @IsString()
-    clienteId!: string;
-
-}
-
-export class CreatePagoDto extends PagoBaseDto {
-    @ValidateNested()
-    @Type(() => DesgloseBilletesDto)
-    @IsOptional()
-    desglose?: DesgloseBilletesDto;
 
     @IsNumber()
     @IsPositive()
@@ -109,21 +97,22 @@ export class CreatePagoDto extends PagoBaseDto {
 
     @IsNumber()
     @IsPositive()
+    monto_pagado!: number;
+}
+
+export class CreatePagoCreditoDto extends PagoBaseDto {
+
+    @IsMongoId()
+    @IsString()
+    clienteId!: string;
+
+    @IsNumber()
+    @IsPositive()
     @IsOptional()
-    cambio?: number;
+    monto_pagar?: number;
 
-    @IsString()
-    @IsOptional()
-    clienteId?: string;
+}
 
-     @IsString()
-    ciCliente!:string;
-
-    @IsString()
-    @IsNotEmpty()
-    nombreCliente!:string;
-
-    @IsString()
-    @IsNotEmpty()
-    referenciaPago!:string;
+export class CreatePagoDto extends PagoBaseDto {
+   
 }

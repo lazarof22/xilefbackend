@@ -41,14 +41,14 @@ export class ActivoFijoService {
 
   async findAll() {
     return this.activoModel.find()
-      .populate('proveedor')
+      .populate('empresa')
       .populate('area')
-      .populate('depreciacionActivo')
+      .populate('tasa_depreciacion')
       .populate('moneda')
       .populate('pais')
       .populate('concepto')
       .populate('movimiento')
-      .populate('estadoActivo')
+      .populate('estado')
       .exec();
   }
 

@@ -58,6 +58,9 @@ export class PagoEfectivo extends Pago {
 
     @Prop({ required: true})
     cambio!:number;
+    
+    @Prop()
+    monto_pagado!: number;
 }
 
 export const PagoEfectivoSchema = SchemaFactory.createForClass(PagoEfectivo);
