@@ -3,10 +3,10 @@ import { CreatePagoCreditoDto, CreatePagoDto, CreatePagoEfectivoDto, CreatePagoT
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Pago } from './schema/pago.schema';
-import { PagoEfectivo } from './schema/pago_efectivo.schema';
 import { PagoCredito } from './schema/pago_credito.schema';
 import { PagoTransferencia } from './schema/pago_transferencia.schema';
 import { Cliente } from 'src/modules/clientes y provedores/cliente/schemas/cliente.schema';
+import { PagoEfectivo } from './schema/pago_efectivo.schema';
 
 @Injectable()
 export class PagoService {
