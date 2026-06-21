@@ -19,6 +19,9 @@ export class Empresa {
     @Prop({ required: true, unique: true })
     nombreEmpresa!: string;
 
+    @Prop({ required: true, unique: true })
+    emailEmpresa!: string;
+
     @Prop({ requirec: true, unique: true })
     direccionEmpresa!: string;
 
@@ -33,6 +36,15 @@ export class Empresa {
 
     @Prop({ enum: tipoEmpresa, required: true, unique: true })
     tipoEmpresa!: tipoEmpresa;
+
+    @Prop({required:true})
+    sloganEmpresa!: string;
+
+    @Prop({required:true})
+    ciudadEmpresa!:string;
+
+    @Prop({ type: Types.ObjectId, ref: 'Pais', required: true })
+    paisEmpresa!:Types.ObjectId
 
 
 }

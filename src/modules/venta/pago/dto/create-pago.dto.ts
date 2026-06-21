@@ -74,6 +74,10 @@ export class CreatePagoEfectivoDto extends PagoBaseDto {
     @IsNumber()
     @IsPositive()
     monto_pagado!: number;
+
+    @IsMongoId()
+    @IsString()
+    moneda!: string;
     
 }
 

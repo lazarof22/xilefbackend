@@ -43,14 +43,14 @@ export class VentaService {
       producto.stock_inicial -= item.cantidad;
       await producto.save();
 
-      // Crear kardex de venta para el producto
+      /* Crear kardex de venta para el producto
       await this.kardexModel.create({
         productoId: producto._id,
         tipo: KardexTipo.VENTA,
         cantidad: item.cantidad,
         stock: producto.stock_inicial,
         motivo: `Venta`,
-      });
+      });*/
 
       // Alerta si quedó bajo del mínimo
       if (producto.stock_inicial < producto.stock_minimo) {
