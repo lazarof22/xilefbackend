@@ -5,7 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import * as request from 'supertest';
 import { App } from 'supertest/types';
-import { LicenciaModule } from '../src/modules/licencia/licencia.module';
+import { LicenciaModule } from '../src/modules/configuracion/licencia/licencia.module';
 import { AuthModule } from '../src/modules/auth/auth.module';
 
 describe('LicenciaController (e2e)', () => {

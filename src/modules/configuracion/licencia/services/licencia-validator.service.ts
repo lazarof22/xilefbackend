@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { LicenciaCryptoService } from './licencia-crypto.service';
 import { LICENCIA_FORMAT_REGEX } from '../constants/licencia.constants';
+import { LicenciaValidator } from '../types/licencia-validator.interface';
 
 interface NonceEntry {
   nonce: string;
@@ -8,12 +9,14 @@ interface NonceEntry {
 }
 
 @Injectable()
-export class LicenciaValidatorService {
+export class LicenciaValidatorService extends LicenciaValidator {
   private readonly usedNonces: Map<string, NonceEntry> = new Map();
   private static readonly MAX_NONCES = 10_000;
   private static readonly NONCE_TTL_MS = 5 * 60 * 1000;
 
-  constructor(private readonly cryptoService: LicenciaCryptoService) {}
+  constructor(private readonly cryptoService: LicenciaCryptoService) {
+    super();
+  }
 
   validateKeyFormat(clave: string): boolean {
     return LICENCIA_FORMAT_REGEX.test(clave);

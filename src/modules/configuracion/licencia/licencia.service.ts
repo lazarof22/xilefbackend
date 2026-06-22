@@ -5,13 +5,13 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import * as crypto from 'crypto';
 import { Licencia, LicenciaDocument } from './schemas/licencia.schema';
 import { LicenciaCryptoService } from './services/licencia-crypto.service';
 import { LicenciaGeneratorService } from './services/licencia-generator.service';
-import { LicenciaValidatorService } from './services/licencia-validator.service';
 import { LicenciaAuditService } from './services/licencia-audit.service';
+import { LicenciaValidator } from './types/licencia-validator.interface';
 import { ActivarLicenciaDto } from './dto/activar-licencia.dto';
 import { GenerarLicenciaDto } from './dto/generar-licencia.dto';
 import { RenovarLicenciaDto } from './dto/renovar-licencia.dto';
@@ -32,7 +32,7 @@ export class LicenciaService {
     private readonly licenciaModel: Model<LicenciaDocument>,
     private readonly cryptoService: LicenciaCryptoService,
     private readonly generatorService: LicenciaGeneratorService,
-    private readonly validatorService: LicenciaValidatorService,
+    private readonly validatorService: LicenciaValidator,
     private readonly auditService: LicenciaAuditService,
   ) {}
 

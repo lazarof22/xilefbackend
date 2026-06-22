@@ -15,6 +15,7 @@ import { LicenciaValidatorService } from './services/licencia-validator.service'
 import { LicenciaAuditService } from './services/licencia-audit.service';
 import { LicenciaCronService } from './services/licencia-cron.service';
 import { LicenciaGuard } from './guards/licencia.guard';
+import { LicenciaValidator } from './types/licencia-validator.interface';
 
 @Module({
   imports: [
@@ -35,7 +36,7 @@ import { LicenciaGuard } from './guards/licencia.guard';
     LicenciaService,
     LicenciaCryptoService,
     LicenciaGeneratorService,
-    LicenciaValidatorService,
+    { provide: LicenciaValidator, useClass: LicenciaValidatorService },
     LicenciaAuditService,
     LicenciaCronService,
     LicenciaGuard,

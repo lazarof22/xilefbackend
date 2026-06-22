@@ -7,6 +7,7 @@ import { LicenciaCryptoService } from './services/licencia-crypto.service';
 import { LicenciaGeneratorService } from './services/licencia-generator.service';
 import { LicenciaValidatorService } from './services/licencia-validator.service';
 import { LicenciaAuditService } from './services/licencia-audit.service';
+import { LicenciaValidator } from './types/licencia-validator.interface';
 import { AuditoriaLicencia } from './schemas/auditoria-licencia.schema';
 import { Types } from 'mongoose';
 
@@ -69,7 +70,7 @@ describe('LicenciaService', () => {
         LicenciaService,
         LicenciaCryptoService,
         LicenciaGeneratorService,
-        LicenciaValidatorService,
+        { provide: LicenciaValidator, useClass: LicenciaValidatorService },
         LicenciaAuditService,
         { provide: getModelToken(Licencia.name), useValue: mockLicenciaModel },
         { provide: getModelToken(AuditoriaLicencia.name), useValue: mockAuditoriaModel },

@@ -19,9 +19,9 @@ import { LicenciaService } from './licencia.service';
 import { ActivarLicenciaDto } from './dto/activar-licencia.dto';
 import { GenerarLicenciaDto } from './dto/generar-licencia.dto';
 import { RenovarLicenciaDto } from './dto/renovar-licencia.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorator/roles.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorator/roles.decorator';
 import {
   FormatoClaveResponse,
   LicenciaActivadaResponse,
