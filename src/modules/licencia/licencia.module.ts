@@ -1,0 +1,45 @@
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { LicenciaController } from './licencia.controller';
+import { LicenciaService } from './licencia.service';
+import { Licencia, LicenciaSchema } from './schemas/licencia.schema';
+import {
+  AuditoriaLicencia,
+  AuditoriaLicenciaSchema,
+} from './schemas/auditoria-licencia.schema';
+import { LicenciaCryptoService } from './services/licencia-crypto.service';
+import { LicenciaGeneratorService } from './services/licencia-generator.service';
+import { LicenciaValidatorService } from './services/licencia-validator.service';
+import { LicenciaAuditService } from './services/licencia-audit.service';
+import { LicenciaCronService } from './services/licencia-cron.service';
+import { LicenciaGuard } from './guards/licencia.guard';
+
+@Module({
+  imports: [
+    MongooseModule.forFeature([
+      { name: Licencia.name, schema: LicenciaSchema },
+      { name: AuditoriaLicencia.name, schema: AuditoriaLicenciaSchema },
+    ]),
+    ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 30,
+      },
+    ]),
+  ],
+  controllers: [LicenciaController],
+  providers: [
+    LicenciaService,
+    LicenciaCryptoService,
+    LicenciaGeneratorService,
+    LicenciaValidatorService,
+    LicenciaAuditService,
+    LicenciaCronService,
+    LicenciaGuard,
+  ],
+  exports: [LicenciaService, LicenciaGuard],
+})
+export class LicenciaModule {}
