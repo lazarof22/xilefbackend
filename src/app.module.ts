@@ -23,6 +23,7 @@ import { PaisModule } from './modules/nomencladores/pais/pais.module';
 import { ConceptoModule } from './modules/contabilidad/concepto/concepto.module';
 import { MovimientoModule } from './modules/contabilidad/movimiento/movimiento.module';
 import { LicenciaModule } from './modules/configuracion/licencia/licencia.module';
+import { EmpresaDatosModule } from './modules/configuracion/empresa-datos/empresa-datos.module';
 
 
 @Module({
@@ -48,6 +49,7 @@ import { LicenciaModule } from './modules/configuracion/licencia/licencia.module
     CuentaModule,
     DepartamentoModule,
     EmpresaModule,
+    EmpresaDatosModule,
     EstadoModule,
     KardexModule,
     LicenciaModule,
