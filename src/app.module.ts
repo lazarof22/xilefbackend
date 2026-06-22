@@ -22,6 +22,7 @@ import { CuentaModule } from './modules/contabilidad/cuenta/cuenta.module';
 import { PaisModule } from './modules/nomencladores/pais/pais.module';
 import { ConceptoModule } from './modules/contabilidad/concepto/concepto.module';
 import { MovimientoModule } from './modules/contabilidad/movimiento/movimiento.module';
+import { LicenciaModule } from './modules/licencia/licencia.module';
 
 
 @Module({
@@ -49,6 +50,7 @@ import { MovimientoModule } from './modules/contabilidad/movimiento/movimiento.m
     EmpresaModule,
     EstadoModule,
     KardexModule,
+    LicenciaModule,
     MonedaModule,
     PagoModule,
     ProductoModule,
