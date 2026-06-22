@@ -10,6 +10,8 @@ interface NonceEntry {
 @Injectable()
 export class LicenciaValidatorService {
   private readonly usedNonces: Map<string, NonceEntry> = new Map();
+  private static readonly MAX_NONCES = 10_000;
+  private static readonly NONCE_TTL_MS = 5 * 60 * 1000;
 
   constructor(private readonly cryptoService: LicenciaCryptoService) {}
 
@@ -21,9 +23,15 @@ export class LicenciaValidatorService {
     if (!nonce) return true;
     this.cleanExpiredNonces();
     if (this.usedNonces.has(nonce)) return false;
+    if (this.usedNonces.size >= LicenciaValidatorService.MAX_NONCES) {
+      this.cleanExpiredNonces();
+      if (this.usedNonces.size >= LicenciaValidatorService.MAX_NONCES) {
+        this.usedNonces.clear();
+      }
+    }
     this.usedNonces.set(nonce, {
       nonce,
-      expiresAt: Date.now() + 5 * 60 * 1000,
+      expiresAt: Date.now() + LicenciaValidatorService.NONCE_TTL_MS,
     });
     return true;
   }

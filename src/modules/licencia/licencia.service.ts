@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import * as crypto from 'crypto';
 import { Licencia, LicenciaDocument } from './schemas/licencia.schema';
 import { LicenciaCryptoService } from './services/licencia-crypto.service';
 import { LicenciaGeneratorService } from './services/licencia-generator.service';
@@ -15,6 +16,14 @@ import { ActivarLicenciaDto } from './dto/activar-licencia.dto';
 import { GenerarLicenciaDto } from './dto/generar-licencia.dto';
 import { RenovarLicenciaDto } from './dto/renovar-licencia.dto';
 import { LicenciaTipo } from './constants/licencia.constants';
+import {
+  LicenciaGeneradaResponse,
+  LicenciaActivadaResponse,
+  EstadoLicenciaResponse,
+  LicenciaRenovadaResponse,
+  EstadoPublicoResponse,
+} from './types/licencia.types';
+import type { AuditoriaLicenciaDocument } from './schemas/auditoria-licencia.schema';
 
 @Injectable()
 export class LicenciaService {
@@ -27,10 +36,7 @@ export class LicenciaService {
     private readonly auditService: LicenciaAuditService,
   ) {}
 
-  async generateLicencia(dto: GenerarLicenciaDto): Promise<{
-    mensaje: string;
-    licencia: Record<string, any>;
-  }> {
+  async generateLicencia(dto: GenerarLicenciaDto): Promise<LicenciaGeneradaResponse> {
     const existing = await this.licenciaModel.findOne({
       empresa_id: dto.empresa_id,
     });
@@ -48,13 +54,37 @@ export class LicenciaService {
     const fechaVencimiento = dto.fecha_vencimiento
       ? new Date(dto.fecha_vencimiento)
       : this.generatorService.calculateExpiryDate(
-          dto.tipo as LicenciaTipo,
+          dto.tipo,
           dto.duracion_dias,
         );
 
+    if (fechaVencimiento <= fechaInicio) {
+      throw new BadRequestException(
+        'La fecha de vencimiento debe ser posterior a la fecha de inicio',
+      );
+    }
+
+    if (dto.tipo !== 'perpetua') {
+      const ahora = new Date();
+      ahora.setHours(0, 0, 0, 0);
+      if (fechaVencimiento <= ahora) {
+        throw new BadRequestException(
+          'La fecha de vencimiento no puede ser anterior a hoy',
+        );
+      }
+      const maxFecha = new Date();
+      maxFecha.setDate(maxFecha.getDate() + 30);
+      maxFecha.setHours(23, 59, 59, 999);
+      if (fechaVencimiento > maxFecha) {
+        throw new BadRequestException(
+          `La fecha de vencimiento no puede exceder 30 días a partir de hoy. Máximo: ${maxFecha.toISOString().split('T')[0]}`,
+        );
+      }
+    }
+
     const clave = this.generatorService.generateLicenciaKey(
       dto.empresa_id,
-      dto.tipo as LicenciaTipo,
+      dto.tipo,
       fechaVencimiento,
     );
 
@@ -83,11 +113,11 @@ export class LicenciaService {
       ),
       max_usuarios: dto.max_usuarios ?? 0,
       firma_hmac: firmaHmac,
-      metadata: dto.metadata || {},
+      metadata: dto.metadata ?? {},
     });
 
     await this.auditService.logAccion({
-      licencia_id: licencia._id as Types.ObjectId,
+      licencia_id: licencia._id,
       accion: 'generacion',
       empresa_id: dto.empresa_id,
       exitoso: true,
@@ -112,22 +142,14 @@ export class LicenciaService {
     dto: ActivarLicenciaDto,
     ip?: string,
     userAgent?: string,
-  ): Promise<{
-    mensaje: string;
-    valida: boolean;
-    vigente: boolean;
-    dias_restantes: number;
-    tipo: string;
-    empresa: string;
-    fecha_vencimiento: Date;
-  }> {
+  ): Promise<LicenciaActivadaResponse> {
     if (!this.validatorService.validateKeyFormat(dto.clave_activacion)) {
       throw new BadRequestException(
         'Formato de clave inválido. Debe ser XILEF-XXXX-XXXX-XXXX-XXXX',
       );
     }
 
-    if (!this.validatorService.validateNonce(dto.nonce || '')) {
+    if (!this.validatorService.validateNonce(dto.nonce ?? '')) {
       throw new BadRequestException(
         'Nonce inválido o ya utilizado. Posible ataque de replay.',
       );
@@ -143,11 +165,11 @@ export class LicenciaService {
       throw new NotFoundException('Licencia no encontrada o inválida');
     }
 
-    const empresaId = dto.empresa_id || licencia.empresa_id;
-    const empresaNombre = dto.empresa_nombre || licencia.empresa_nombre;
+    const empresaId = dto.empresa_id ?? licencia.empresa_id;
+    const empresaNombre = dto.empresa_nombre ?? licencia.empresa_nombre;
 
     await this.auditService.logAccion({
-      licencia_id: licencia._id as Types.ObjectId,
+      licencia_id: licencia._id,
       accion: 'activacion',
       empresa_id: empresaId,
       exitoso: false,
@@ -203,7 +225,7 @@ export class LicenciaService {
     await licencia.save();
 
     await this.auditService.logAccion({
-      licencia_id: licencia._id as Types.ObjectId,
+      licencia_id: licencia._id,
       accion: 'activacion',
       empresa_id: empresaId,
       exitoso: true,
@@ -225,15 +247,7 @@ export class LicenciaService {
     };
   }
 
-  async verificarEstado(empresaId: string): Promise<{
-    valida: boolean;
-    vigente: boolean;
-    dias_restantes: number;
-    tipo: string | null;
-    empresa: string | null;
-    fecha_vencimiento: Date | null;
-    max_usuarios: number;
-  }> {
+  async verificarEstado(empresaId: string): Promise<EstadoLicenciaResponse> {
     const licencia = await this.licenciaModel.findOne({
       empresa_id: empresaId,
       activa: true,
@@ -288,10 +302,7 @@ export class LicenciaService {
     };
   }
 
-  async renovarLicencia(dto: RenovarLicenciaDto): Promise<{
-    mensaje: string;
-    licencia: Record<string, any>;
-  }> {
+  async renovarLicencia(dto: RenovarLicenciaDto): Promise<LicenciaRenovadaResponse> {
     let licencia: LicenciaDocument | null = null;
 
     if (dto.clave_activacion) {
@@ -371,7 +382,7 @@ export class LicenciaService {
     await licencia.save();
 
     await this.auditService.logAccion({
-      licencia_id: licencia._id as Types.ObjectId,
+      licencia_id: licencia._id,
       accion: 'renovacion',
       empresa_id: licencia.empresa_id,
       exitoso: true,
@@ -411,7 +422,7 @@ export class LicenciaService {
     await licencia.save();
 
     await this.auditService.logAccion({
-      licencia_id: licencia._id as Types.ObjectId,
+      licencia_id: licencia._id,
       accion: 'revocacion',
       empresa_id: empresaId,
       exitoso: true,
@@ -454,23 +465,27 @@ export class LicenciaService {
     return result.modifiedCount;
   }
 
-  async getAuditoria(): Promise<any[]> {
+  async getAuditoria(): Promise<AuditoriaLicenciaDocument[]> {
     return this.auditService.getTodasAuditorias();
   }
 
-  async estadoPublico(clave: string): Promise<{
-    valida: boolean;
-    vigente: boolean;
-    dias_restantes: number;
-    tipo: string | null;
-    empresa: string | null;
-    empresa_id: string | null;
-    fecha_inicio: Date | null;
-    fecha_vencimiento: Date | null;
-    max_usuarios: number;
-    activa: boolean;
-    revocada: boolean;
-  }> {
+  private async timingSafeDelay(): Promise<void> {
+    const ms = crypto.randomInt(30, 80);
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async fixedTimeResponse<T>(fn: () => Promise<T>, minMs = 150): Promise<T> {
+    const start = Date.now();
+    const result = await fn();
+    const elapsed = Date.now() - start;
+    if (elapsed < minMs) {
+      await new Promise((resolve) => setTimeout(resolve, minMs - elapsed));
+    }
+    return result;
+  }
+
+  async estadoPublico(clave: string): Promise<EstadoPublicoResponse> {
+    return this.fixedTimeResponse(async () => {
     if (!clave) {
       return {
         valida: false, vigente: false, dias_restantes: 0,
@@ -515,5 +530,6 @@ export class LicenciaService {
       activa: licencia.activa,
       revocada: false,
     };
+    });
   }
 }
