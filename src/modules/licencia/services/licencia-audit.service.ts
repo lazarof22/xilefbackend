@@ -29,11 +29,11 @@ export class LicenciaAuditService {
         licencia_id: params.licencia_id,
         accion: params.accion,
         empresa_id: params.empresa_id,
-        detalles: params.detalles || {},
+        detalles: params.detalles ?? {},
         exitoso: params.exitoso,
-        error: params.error || undefined,
-        ip_origen: params.ip_origen || undefined,
-        user_agent: params.user_agent || undefined,
+        error: params.error ?? undefined,
+        ip_origen: params.ip_origen ?? undefined,
+        user_agent: params.user_agent ?? undefined,
       });
     } catch {
       // Fail silently - audit should never break main flow

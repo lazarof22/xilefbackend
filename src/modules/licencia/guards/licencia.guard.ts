@@ -15,8 +15,8 @@ export class LicenciaGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
 
     const empresaId =
-      request.user?.empresa_id ||
-      request.body?.empresa_id ||
+      request.user?.empresa_id ??
+      request.body?.empresa_id ??
       request.headers?.['x-empresa-id'];
 
     if (!empresaId) {

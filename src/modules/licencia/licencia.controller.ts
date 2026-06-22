@@ -22,6 +22,27 @@ import { RenovarLicenciaDto } from './dto/renovar-licencia.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorator/roles.decorator';
+import {
+  FormatoClaveResponse,
+  LicenciaActivadaResponse,
+  EstadoLicenciaResponse,
+  LicenciaGeneradaResponse,
+  LicenciaRenovadaResponse,
+  RevocarResponse,
+  EstadoPublicoResponse,
+} from './types/licencia.types';
+import type { LicenciaDocument } from './schemas/licencia.schema';
+import type { AuditoriaLicenciaDocument } from './schemas/auditoria-licencia.schema';
+
+interface RequestWithUser {
+  user?: {
+    empresa_id?: string;
+    rol?: string;
+    sub?: string;
+  };
+  headers?: Record<string, string | string[] | undefined>;
+  query?: Record<string, string>;
+}
 
 @ApiTags('Licencias')
 @Controller('licencia')
@@ -41,11 +62,9 @@ export class LicenciaController {
   @ApiOperation({ summary: 'Validar formato de clave sin activar' })
   @ApiResponse({ status: 200, description: 'Resultado de validación de formato' })
   @Throttle({ default: { ttl: 60000, limit: 10 } })
-  validarClave(@Body('clave') clave: string) {
+  validarClave(@Body('clave') clave: string): FormatoClaveResponse {
     const regex = /^XILEF-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}$/;
-    return {
-      formato_valido: regex.test(clave),
-    };
+    return { formato_valido: regex.test(clave) };
   }
 
   @Post('activar')
@@ -58,9 +77,10 @@ export class LicenciaController {
   activar(
     @Body() dto: ActivarLicenciaDto,
     @Ip() ip: string,
-    @Req() req: any,
-  ) {
-    const userAgent = req.headers?.['user-agent'] || '';
+    @Req() req: RequestWithUser,
+  ): Promise<LicenciaActivadaResponse> {
+    const rawAgent = req.headers?.['user-agent'];
+    const userAgent = Array.isArray(rawAgent) ? rawAgent[0] : (rawAgent ?? '');
     return this.licenciaService.activarLicencia(dto, ip, userAgent);
   }
 
@@ -71,10 +91,12 @@ export class LicenciaController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { ttl: 60000, limit: 30 } })
-  verificarEstado(@Req() req: any) {
-    const empresaId = req.user?.empresa_id || req.query?.empresa_id;
+  verificarEstado(
+    @Req() req: RequestWithUser,
+  ): Promise<EstadoLicenciaResponse | (EstadoLicenciaResponse & { mensaje: string })> {
+    const empresaId = req.user?.empresa_id ?? (req.query as Record<string, string>)?.empresa_id;
     if (!empresaId) {
-      return {
+      return Promise.resolve({
         valida: false,
         vigente: false,
         dias_restantes: 0,
@@ -83,7 +105,7 @@ export class LicenciaController {
         fecha_vencimiento: null,
         max_usuarios: 0,
         mensaje: 'empresa_id no proporcionado',
-      };
+      });
     }
     return this.licenciaService.verificarEstado(empresaId);
   }
@@ -95,7 +117,7 @@ export class LicenciaController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('administrador')
-  generar(@Body() dto: GenerarLicenciaDto) {
+  generar(@Body() dto: GenerarLicenciaDto): Promise<LicenciaGeneradaResponse> {
     return this.licenciaService.generateLicencia(dto);
   }
 
@@ -106,7 +128,7 @@ export class LicenciaController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('administrador')
-  renovar(@Body() dto: RenovarLicenciaDto) {
+  renovar(@Body() dto: RenovarLicenciaDto): Promise<LicenciaRenovadaResponse> {
     return this.licenciaService.renovarLicencia(dto);
   }
 
@@ -120,7 +142,7 @@ export class LicenciaController {
   revocar(
     @Param('empresaId') empresaId: string,
     @Body('motivo') motivo: string,
-  ) {
+  ): Promise<RevocarResponse> {
     return this.licenciaService.revocarLicencia(empresaId, motivo);
   }
 
@@ -130,7 +152,7 @@ export class LicenciaController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('administrador')
-  listarTodas() {
+  listarTodas(): Promise<LicenciaDocument[]> {
     return this.licenciaService.findAll();
   }
 
@@ -140,7 +162,7 @@ export class LicenciaController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('administrador')
-  obtenerUna(@Param('empresaId') empresaId: string) {
+  obtenerUna(@Param('empresaId') empresaId: string): Promise<LicenciaDocument | null> {
     return this.licenciaService.findOne(empresaId);
   }
 
@@ -150,7 +172,7 @@ export class LicenciaController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('administrador')
-  auditoria() {
+  auditoria(): Promise<AuditoriaLicenciaDocument[]> {
     return this.licenciaService.getAuditoria();
   }
 
@@ -158,7 +180,7 @@ export class LicenciaController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Consultar estado público de licencia por clave' })
   @Throttle({ default: { ttl: 60000, limit: 20 } })
-  async estadoPublico(@Query('clave') clave: string) {
+  async estadoPublico(@Query('clave') clave: string): Promise<EstadoPublicoResponse> {
     return this.licenciaService.estadoPublico(clave);
   }
 }

@@ -4,6 +4,7 @@ import { LicenciaService } from './licencia.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { LicenciaTipo } from './constants/licencia.constants';
 import { APP_GUARD } from '@nestjs/core';
 
 describe('LicenciaController', () => {
@@ -150,7 +151,7 @@ describe('LicenciaController', () => {
       const dto = {
         empresa_nombre: 'New Corp',
         empresa_id: 'EMP-NEW',
-        tipo: 'suscripcion_anual',
+        tipo: 'suscripcion_anual' as LicenciaTipo,
       };
       const result = await controller.generar(dto);
       expect(mockLicenciaService.generateLicencia).toHaveBeenCalledWith(dto);

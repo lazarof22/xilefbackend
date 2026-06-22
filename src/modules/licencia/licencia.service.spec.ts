@@ -21,7 +21,7 @@ describe('LicenciaService', () => {
     clave_activacion_encriptada: 'encrypted-key',
     empresa_nombre: 'Test Empresa',
     empresa_id: 'EMP-001',
-    tipo: 'suscripcion_anual',
+    tipo: 'suscripcion_mensual',
     fecha_inicio: new Date('2024-01-01'),
     fecha_vencimiento: new Date('2025-01-01'),
     activa: true,
@@ -95,14 +95,14 @@ describe('LicenciaService', () => {
       const result = await service.generateLicencia({
         empresa_nombre: 'Test Corp',
         empresa_id: 'EMP-NEW',
-        tipo: 'suscripcion_anual',
+        tipo: 'suscripcion_mensual',
         max_usuarios: 5,
       });
 
       expect(result.mensaje).toContain('exitosa');
       expect(result.licencia.clave).toMatch(/^XILEF-/);
       expect(result.licencia.empresa).toBeDefined();
-      expect(result.licencia.tipo).toBe('suscripcion_anual');
+      expect(result.licencia.tipo).toBe('suscripcion_mensual');
       expect(mockLicenciaModel.create).toHaveBeenCalled();
     });
 
@@ -190,7 +190,7 @@ describe('LicenciaService', () => {
       const fechaInicio = new Date();
       const payload = cryptoService.buildIntegrityPayload({
         empresa_id: 'EMP-001',
-        tipo: 'suscripcion_anual',
+        tipo: 'suscripcion_mensual',
         fecha_inicio: fechaInicio,
         fecha_vencimiento: fechaVenc,
       });
@@ -217,7 +217,7 @@ describe('LicenciaService', () => {
       const fechaInicio = new Date('2019-01-01');
       const payload = cryptoService.buildIntegrityPayload({
         empresa_id: 'EMP-001',
-        tipo: 'suscripcion_anual',
+        tipo: 'suscripcion_mensual',
         fecha_inicio: fechaInicio,
         fecha_vencimiento: fechaVenc,
       });

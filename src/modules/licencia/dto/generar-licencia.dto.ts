@@ -9,7 +9,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { LICENCIA_TIPOS } from '../constants/licencia.constants';
+import { LICENCIA_TIPOS, LicenciaTipo } from '../constants/licencia.constants';
 
 export class GenerarLicenciaDto {
   @ApiProperty({
@@ -19,7 +19,7 @@ export class GenerarLicenciaDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(200, { message: 'El nombre de la empresa no puede exceder 200 caracteres' })
-  empresa_nombre: string;
+  empresa_nombre!: string;
 
   @ApiProperty({
     description: 'ID fiscal de la empresa (RUC/NIT)',
@@ -27,7 +27,7 @@ export class GenerarLicenciaDto {
   })
   @IsString()
   @IsNotEmpty()
-  empresa_id: string;
+  empresa_id!: string;
 
   @ApiProperty({
     description: 'Tipo de licencia',
@@ -35,7 +35,7 @@ export class GenerarLicenciaDto {
     example: 'suscripcion_anual',
   })
   @IsEnum(LICENCIA_TIPOS)
-  tipo: string;
+  tipo!: LicenciaTipo;
 
   @ApiPropertyOptional({
     description: 'Duración en días (ignorado si es perpetua)',
@@ -76,5 +76,5 @@ export class GenerarLicenciaDto {
     description: 'Metadatos adicionales',
   })
   @IsOptional()
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }

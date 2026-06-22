@@ -25,7 +25,7 @@ export class AuditoriaLicencia {
   empresa_id: string;
 
   @Prop({ type: Object })
-  detalles: Record<string, any>;
+  detalles?: Record<string, unknown>;
 
   @Prop({ default: true })
   exitoso: boolean;

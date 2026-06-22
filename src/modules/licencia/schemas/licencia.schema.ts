@@ -48,7 +48,7 @@ export class Licencia {
   firma_hmac: string;
 
   @Prop({ type: Object })
-  metadata: Record<string, any>;
+  metadata?: Record<string, unknown>;
 
   @Prop({ default: false })
   revocada: boolean;
