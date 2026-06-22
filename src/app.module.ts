@@ -24,6 +24,7 @@ import { ConceptoModule } from './modules/contabilidad/concepto/concepto.module'
 import { MovimientoModule } from './modules/contabilidad/movimiento/movimiento.module';
 import { LicenciaModule } from './modules/configuracion/licencia/licencia.module';
 import { EmpresaDatosModule } from './modules/configuracion/empresa-datos/empresa-datos.module';
+import { UsuariosModule } from './modules/configuracion/usuarios/usuarios.module';
 
 
 @Module({
@@ -56,6 +57,7 @@ import { EmpresaDatosModule } from './modules/configuracion/empresa-datos/empres
     MonedaModule,
     PagoModule,
     ProductoModule,
+    UsuariosModule,
     VentaModule,
     PaisModule,
     ConceptoModule,
