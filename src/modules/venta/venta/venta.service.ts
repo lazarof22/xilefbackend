@@ -6,8 +6,9 @@ import { UpdateVentaDto } from './dto/update-venta.dto';
 import { Venta } from './schema/venta.schema';
 import { Cliente } from '../../clientes y provedores/cliente/schemas/cliente.schema';
 import { Producto } from '../../inventario/producto/schemas/producto.schema';
-import { Kardex, KardexTipo } from 'src/modules/inventario/kardex/schema/kardex.schema';
+import { Kardex } from 'src/modules/inventario/kardex/schema/kardex.schema';
 import { Pago } from '../pago/schema/pago.schema';
+import { ReportePlus } from '../reporte_plus/schema/reporte_plus.schema';
 
 
 @Injectable()
@@ -17,7 +18,8 @@ export class VentaService {
     @InjectModel(Cliente.name) private clienteModel: Model<Cliente>,
     @InjectModel(Producto.name) private productoModel: Model<Producto>,
     @InjectModel(Kardex.name) private kardexModel: Model<Kardex>,
-    @InjectModel('Pago') private pagoModel: Model<Pago>
+    @InjectModel('Pago') private pagoModel: Model<Pago>,
+    @InjectModel(ReportePlus.name) private reportePlusModel: Model<ReportePlus>,
   ) { }
 
   async create(createVentaDto: CreateVentaDto): Promise<Venta> {
@@ -43,14 +45,26 @@ export class VentaService {
       producto.stock_inicial -= item.cantidad;
       await producto.save();
 
-      /* Crear kardex de venta para el producto
-      await this.kardexModel.create({
-        productoId: producto._id,
-        tipo: KardexTipo.VENTA,
-        cantidad: item.cantidad,
-        stock: producto.stock_inicial,
-        motivo: `Venta`,
-      });*/
+      // Crear o actualizar reporte plus de venta para el producto
+      const precioUnitario = producto.precio_venta || 0;
+      const totalItem = precioUnitario * item.cantidad;
+      const descuentoItem = item.descuentoMonto || 0;
+      const descuentoPorcentaje = createVentaDto.descuento_total > 0 ? (descuentoItem / (totalItem || 1)) * 100 : 0;
+
+      await this.reportePlusModel.findOneAndUpdate(
+        { productoId: producto._id },
+        {
+          $set: {
+            cantidad: item.cantidad,
+            stockfinal: producto.stock_inicial,
+            descuento: descuentoItem,
+            impuesto: createVentaDto.impuesto.toString(),
+            totalPagado: totalItem - descuentoItem,
+            fecha: new Date(),
+          },
+        },
+        { upsert: true, new: true }
+      );
 
       // Alerta si quedó bajo del mínimo
       if (producto.stock_inicial < producto.stock_minimo) {

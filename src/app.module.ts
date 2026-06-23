@@ -26,6 +26,8 @@ import { LicenciaModule } from './modules/configuracion/licencia/licencia.module
 import { EmpresaDatosModule } from './modules/configuracion/empresa-datos/empresa-datos.module';
 import { UsuariosModule } from './modules/configuracion/usuarios/usuarios.module';
 import { ImportExportModule } from './modules/configuracion/import-export/import-export.module';
+import { ReportePlusModule } from './modules/venta/reporte_plus/reporte_plus.module';
+import { ReporteCajaModule } from './modules/venta/reporte_caja/reporte_caja.module';
 
 
 @Module({
@@ -47,6 +49,7 @@ import { ImportExportModule } from './modules/configuracion/import-export/import
     CategoriaModule,
     CargoEmpleadoModule,
     ClienteModule,
+    ConceptoModule,
     CompraModule,
     CuentaModule,
     DepartamentoModule,
@@ -58,12 +61,13 @@ import { ImportExportModule } from './modules/configuracion/import-export/import
     LicenciaModule,
     MonedaModule,
     PagoModule,
+    PaisModule,
     ProductoModule,
     UsuariosModule,
     VentaModule,
-    PaisModule,
-    ConceptoModule,
     MovimientoModule,
+    ReportePlusModule,
+    ReporteCajaModule
 
 
   ],

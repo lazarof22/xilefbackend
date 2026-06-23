@@ -7,6 +7,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Producto, ProductoSchema } from '../../inventario/producto/schemas/producto.schema';
 import { Kardex, KardexSchema } from 'src/modules/inventario/kardex/schema/kardex.schema';
 import { Pago, PagoSchema } from '../pago/schema/pago.schema';
+import { ReportePlus, ReportePlusSchema } from '../reporte_plus/schema/reporte_plus.schema';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { Pago, PagoSchema } from '../pago/schema/pago.schema';
       { name: Producto.name, schema: ProductoSchema },
       { name: Kardex.name, schema: KardexSchema },
       { name: Pago.name, schema: PagoSchema },
+      { name: ReportePlus.name, schema: ReportePlusSchema },
     ]),
   ],
   controllers: [VentaController],
