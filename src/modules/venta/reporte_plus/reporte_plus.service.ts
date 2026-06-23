@@ -26,8 +26,6 @@ export class ReportePlusService {
     // Obtener TODOS los reportes plus (sin filtro de fecha)
     const reportesPlus = await this.reportePlusModel.find().exec();
 
-    console.log('Reportes encontrados:', reportesPlus.length);
-
     // Si no hay reportes, retornar sin hacer nada
     if (reportesPlus.length === 0) {
       return {
@@ -52,8 +50,6 @@ export class ReportePlusService {
 
     // Eliminar TODOS los reportes plus
     const resultado = await this.reportePlusModel.deleteMany({});
-
-    console.log('Registros eliminados:', resultado.deletedCount);
 
     return {
       movimientos: movimientosCreados,
