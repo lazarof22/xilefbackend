@@ -14,5 +14,6 @@ import { MongooseModule } from '@nestjs/mongoose';
     },
     
     ]),],
+    exports: [MongooseModule, EstadoService],
 })
 export class EstadoModule {}

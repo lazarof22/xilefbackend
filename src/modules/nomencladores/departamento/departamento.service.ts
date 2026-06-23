@@ -3,12 +3,23 @@ import { CreateDepartamentoDto } from './dto/create-departamento.dto';
 import { UpdateDepartamentoDto } from './dto/update-departamento.dto';
 import { Departamento } from './schema/departamento.schema';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
+import { normalizeName } from '../shared/nomenclador-utils';
 
 @Injectable()
 export class DepartamentoService {
   constructor(@InjectModel(Departamento.name) private departamentoModel: Model<Departamento>) {
 
+  }
+
+  async findOrCreate(nombre: string): Promise<Types.ObjectId> {
+    const normalized = normalizeName(nombre);
+    const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let doc = await this.departamentoModel.findOne({ nombre_departamento: { $regex: new RegExp('^' + escaped + '$', 'i') } }).exec();
+    if (!doc) {
+      doc = await this.departamentoModel.create({ nombre_departamento: normalized });
+    }
+    return doc._id as Types.ObjectId;
   }
 
   //Crear una departamento

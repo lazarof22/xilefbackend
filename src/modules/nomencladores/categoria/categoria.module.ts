@@ -11,6 +11,6 @@ import { MongooseModule } from '@nestjs/mongoose';
   imports: [MongooseModule.forFeature([{
           name: Categoria.name,
           schema: CategoriaSchema,},]),],
-        exports: [MongooseModule],
+        exports: [MongooseModule, CategoriaService],
 })
 export class CategoriaModule {}

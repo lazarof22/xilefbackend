@@ -3,15 +3,25 @@ import { CreateCategoriaDto } from './dto/create-categoria.dto';
 import { UpdateCategoriaDto } from './dto/update-categoria.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Categoria } from './schema/categoria.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
+import { normalizeName } from '../shared/nomenclador-utils';
 
 @Injectable()
 export class CategoriaService {
   constructor(@InjectModel(Categoria.name)private categoriaModel:Model<Categoria>){
         
       } 
-  
-  
+
+  async findOrCreate(nombre: string): Promise<Types.ObjectId> {
+    const normalized = normalizeName(nombre);
+    const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let doc = await this.categoriaModel.findOne({ nombre_categoria: { $regex: new RegExp('^' + escaped + '$', 'i') } }).exec();
+    if (!doc) {
+      doc = await this.categoriaModel.create({ nombre_categoria: normalized });
+    }
+    return doc._id as Types.ObjectId;
+  }
+
     //Crear una categoria
       async create(
         createCategoriaDto: CreateCategoriaDto,

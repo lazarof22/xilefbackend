@@ -6,12 +6,14 @@ import {
   EmpresaDatos,
   EmpresaDatosSchema,
 } from './schemas/empresa-datos.schema';
+import { NomencladorHelperModule } from '../nomenclador-helper/nomenclador-helper.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: EmpresaDatos.name, schema: EmpresaDatosSchema },
     ]),
+    NomencladorHelperModule,
   ],
   controllers: [EmpresaDatosController],
   providers: [EmpresaDatosService],

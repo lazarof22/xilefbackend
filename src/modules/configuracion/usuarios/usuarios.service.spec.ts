@@ -3,12 +3,20 @@ import { getModelToken } from '@nestjs/mongoose';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
 import { Usuario } from '../../auth/schemas/empleado.schema';
+import { NomencladorHelper } from '../nomenclador-helper/nomenclador-helper.service';
+import { Types } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 
 jest.mock('bcryptjs', () => ({
   hash: jest.fn().mockResolvedValue('$2a$10$hashedpassword'),
   compare: jest.fn().mockResolvedValue(true),
 }));
+
+const mockNomencladorHelper = {
+  isObjectId: jest.fn((v: any) => /^[0-9a-fA-F]{24}$/.test(v)),
+  findOrCreateDepartamento: jest.fn((name: string) => Promise.resolve(new Types.ObjectId('507f1f77bcf86cd799439011'))),
+  findOrCreateCargoEmpleado: jest.fn((name: string) => Promise.resolve(new Types.ObjectId('507f1f77bcf86cd799439012'))),
+};
 
 describe('UsuariosService', () => {
   let service: UsuariosService;
@@ -32,6 +40,7 @@ describe('UsuariosService', () => {
       providers: [
         UsuariosService,
         { provide: getModelToken(Usuario.name), useValue: mockModel },
+        { provide: NomencladorHelper, useValue: mockNomencladorHelper },
       ],
     }).compile();
 

@@ -2,8 +2,9 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { CreatePaiDto } from './dto/create-pai.dto';
 import { UpdatePaiDto } from './dto/update-pai.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Pais } from './schema/pais.schema';
+import { normalizeName } from '../shared/nomenclador-utils';
 
 @Injectable()
 export class PaisService {
@@ -11,6 +12,15 @@ export class PaisService {
 
   }
 
+  async findOrCreate(nombre: string): Promise<Types.ObjectId> {
+    const normalized = normalizeName(nombre);
+    const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let doc = await this.paisModel.findOne({ nombrePais: { $regex: new RegExp('^' + escaped + '$', 'i') } }).exec();
+    if (!doc) {
+      doc = await this.paisModel.create({ nombrePais: normalized });
+    }
+    return doc._id as Types.ObjectId;
+  }
 
   //Crear un pais
   async create(

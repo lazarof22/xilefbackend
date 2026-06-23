@@ -2,6 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { EmpresaDatosService } from './empresa-datos.service';
 import { EmpresaDatos } from './schemas/empresa-datos.schema';
+import { NomencladorHelper } from '../nomenclador-helper/nomenclador-helper.service';
+import { Types } from 'mongoose';
+
+const mockNomencladorHelper = {
+  isObjectId: jest.fn((v: any) => /^[0-9a-fA-F]{24}$/.test(v)),
+  findOrCreatePais: jest.fn((name: string) => Promise.resolve(new Types.ObjectId('507f1f77bcf86cd799439011'))),
+};
 
 describe('EmpresaDatosService', () => {
   let service: EmpresaDatosService;
@@ -17,6 +24,7 @@ describe('EmpresaDatosService', () => {
       providers: [
         EmpresaDatosService,
         { provide: getModelToken(EmpresaDatos.name), useValue: mockModel },
+        { provide: NomencladorHelper, useValue: mockNomencladorHelper },
       ],
     }).compile();
 

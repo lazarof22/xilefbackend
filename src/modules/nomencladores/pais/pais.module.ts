@@ -11,6 +11,6 @@ import { Pais, PaisSchema } from './schema/pais.schema';
   imports: [MongooseModule.forFeature([{
           name: Pais.name,
           schema: PaisSchema,},]),],
-        exports: [MongooseModule],
+        exports: [MongooseModule, PaisService],
 })
 export class PaisModule {}

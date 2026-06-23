@@ -7,6 +7,7 @@ import {
   Producto,
   ProductoDocument,
 } from '../../inventario/producto/schemas/producto.schema';
+import { NomencladorHelper } from '../nomenclador-helper/nomenclador-helper.service';
 
 interface CsvRow {
   codigo: string;
@@ -15,6 +16,8 @@ interface CsvRow {
   precio_venta: string;
   stock_inicial: string;
   stock_minimo: string;
+  categoria?: string;
+  estado?: string;
 }
 
 @Injectable()
@@ -23,6 +26,7 @@ export class ImportExportService {
     @InjectConnection() private readonly connection: Connection,
     @InjectModel(Producto.name)
     private readonly productoModel: Model<ProductoDocument>,
+    private readonly nomencladorHelper: NomencladorHelper,
   ) {}
 
   private parseCsv(csv: string): CsvRow[] {
@@ -83,6 +87,16 @@ export class ImportExportService {
           continue;
         }
 
+        let categoriaId;
+        if (row.categoria) {
+          categoriaId = await this.nomencladorHelper.findOrCreateCategoria(row.categoria);
+        }
+
+        let estadoId;
+        if (row.estado) {
+          estadoId = await this.nomencladorHelper.findOrCreateEstado(row.estado);
+        }
+
         const existing = await this.productoModel.findOne({
           codigo_producto: row.codigo,
         });
@@ -92,6 +106,8 @@ export class ImportExportService {
           existing.precio_venta = precioVenta;
           existing.stock_inicial = stockInicial;
           existing.stock_minimo = stockMinimo;
+          if (categoriaId) existing.categoria_producto = categoriaId;
+          if (estadoId) existing.estado = estadoId;
           await existing.save();
         } else {
           await this.productoModel.create({
@@ -101,6 +117,8 @@ export class ImportExportService {
             precio_venta: precioVenta,
             stock_inicial: stockInicial,
             stock_minimo: stockMinimo,
+            categoria_producto: categoriaId,
+            estado: estadoId,
           });
         }
         imported++;

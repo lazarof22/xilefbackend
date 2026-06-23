@@ -6,12 +6,14 @@ import {
   EmpresaDatosDocument,
 } from './schemas/empresa-datos.schema';
 import { UpdateEmpresaDatosDto } from './dto/update-empresa-datos.dto';
+import { NomencladorHelper } from '../nomenclador-helper/nomenclador-helper.service';
 
 @Injectable()
 export class EmpresaDatosService {
   constructor(
     @InjectModel(EmpresaDatos.name)
     private readonly empresaModel: Model<EmpresaDatosDocument>,
+    private readonly nomencladorHelper: NomencladorHelper,
   ) {}
 
   async obtener(): Promise<EmpresaDatosDocument | null> {
@@ -19,12 +21,16 @@ export class EmpresaDatosService {
   }
 
   async guardar(dto: UpdateEmpresaDatosDto): Promise<EmpresaDatosDocument> {
+    const data: Record<string, any> = { ...dto };
+    if (dto.pais && !this.nomencladorHelper.isObjectId(dto.pais)) {
+      data.pais = await this.nomencladorHelper.findOrCreatePais(dto.pais);
+    }
     const existente = await this.empresaModel.findOne();
     if (existente) {
-      Object.assign(existente, dto);
+      Object.assign(existente, data);
       return existente.save();
     }
-    const created = await this.empresaModel.create(dto);
+    const created = await this.empresaModel.create(data);
     return created;
   }
 

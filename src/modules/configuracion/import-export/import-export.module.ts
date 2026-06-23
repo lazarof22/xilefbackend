@@ -6,12 +6,14 @@ import {
   Producto,
   ProductoSchema,
 } from '../../inventario/producto/schemas/producto.schema';
+import { NomencladorHelperModule } from '../nomenclador-helper/nomenclador-helper.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Producto.name, schema: ProductoSchema },
     ]),
+    NomencladorHelperModule,
   ],
   controllers: [ImportExportController],
   providers: [ImportExportService],

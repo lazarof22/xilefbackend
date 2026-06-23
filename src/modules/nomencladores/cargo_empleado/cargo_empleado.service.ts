@@ -3,7 +3,8 @@ import { CreateCargoEmpleadoDto } from './dto/create-cargo_empleado.dto';
 import { UpdateCargoEmpleadoDto } from './dto/update-cargo_empleado.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { CargoEmpleado } from './schema/cargo_empleado.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
+import { normalizeName } from '../shared/nomenclador-utils';
 
 @Injectable()
 export class CargoEmpleadoService {
@@ -11,6 +12,15 @@ export class CargoEmpleadoService {
 
   }
 
+  async findOrCreate(nombre: string): Promise<Types.ObjectId> {
+    const normalized = normalizeName(nombre);
+    const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let doc = await this.cargoModel.findOne({ nombre_cargo: { $regex: new RegExp('^' + escaped + '$', 'i') } }).exec();
+    if (!doc) {
+      doc = await this.cargoModel.create({ nombre_cargo: normalized });
+    }
+    return doc._id as Types.ObjectId;
+  }
 
   //Crear una cargo
   async create(

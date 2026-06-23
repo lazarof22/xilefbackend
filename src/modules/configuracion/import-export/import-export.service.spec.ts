@@ -2,6 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken, getConnectionToken } from '@nestjs/mongoose';
 import { ImportExportService } from './import-export.service';
 import { Producto } from '../../inventario/producto/schemas/producto.schema';
+import { NomencladorHelper } from '../nomenclador-helper/nomenclador-helper.service';
+import { Types } from 'mongoose';
+
+const mockNomencladorHelper = {
+  findOrCreateCategoria: jest.fn((name: string) => Promise.resolve(new Types.ObjectId('507f1f77bcf86cd799439011'))),
+  findOrCreateEstado: jest.fn((name: string) => Promise.resolve(new Types.ObjectId('507f1f77bcf86cd799439012'))),
+};
 
 describe('ImportExportService', () => {
   let service: ImportExportService;
@@ -29,6 +36,7 @@ describe('ImportExportService', () => {
         ImportExportService,
         { provide: getModelToken(Producto.name), useValue: mockProductoModel },
         { provide: getConnectionToken(), useValue: mockConnection },
+        { provide: NomencladorHelper, useValue: mockNomencladorHelper },
       ],
     }).compile();
 

@@ -12,6 +12,6 @@ import { Departamento, DepartamentoSchema } from './schema/departamento.schema';
     name: Departamento.name,
     schema: DepartamentoSchema,
   },]),],
-  exports: [MongooseModule],
+  exports: [MongooseModule, DepartamentoService],
 })
 export class DepartamentoModule { }

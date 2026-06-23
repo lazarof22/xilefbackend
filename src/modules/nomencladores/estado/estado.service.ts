@@ -1,16 +1,26 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Estado } from './schema/estado.schema';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { CreateEstadoDto } from './dto/create-estado.dto';
 import { UpdateEstadoDto } from './dto/update-estado.dto';
+import { normalizeName } from '../shared/nomenclador-utils';
 
 @Injectable()
 export class EstadoService {
  constructor(@InjectModel(Estado.name)private estadoModel :Model<Estado>){
-       
+        
      } 
- 
+
+ async findOrCreate(nombre: string): Promise<Types.ObjectId> {
+   const normalized = normalizeName(nombre);
+   const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+   let doc = await this.estadoModel.findOne({ estado: { $regex: new RegExp('^' + escaped + '$', 'i') } }).exec();
+   if (!doc) {
+     doc = await this.estadoModel.create({ estado: normalized });
+   }
+   return doc._id as Types.ObjectId;
+ }
  
    //Crear una estado
      async create(

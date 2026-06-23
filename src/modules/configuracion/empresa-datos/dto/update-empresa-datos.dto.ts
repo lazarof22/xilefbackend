@@ -49,7 +49,7 @@ export class UpdateEmpresaDatosDto {
   @MaxLength(100)
   ciudad?: string;
 
-  @ApiPropertyOptional({ example: 'Venezuela' })
+  @ApiPropertyOptional({ example: 'Venezuela', description: 'Nombre del país o ObjectId' })
   @IsOptional()
   @IsString()
   @MaxLength(100)
