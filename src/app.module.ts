@@ -25,6 +25,7 @@ import { MovimientoModule } from './modules/contabilidad/movimiento/movimiento.m
 import { LicenciaModule } from './modules/configuracion/licencia/licencia.module';
 import { EmpresaDatosModule } from './modules/configuracion/empresa-datos/empresa-datos.module';
 import { UsuariosModule } from './modules/configuracion/usuarios/usuarios.module';
+import { ImportExportModule } from './modules/configuracion/import-export/import-export.module';
 
 
 @Module({
@@ -52,6 +53,7 @@ import { UsuariosModule } from './modules/configuracion/usuarios/usuarios.module
     EmpresaModule,
     EmpresaDatosModule,
     EstadoModule,
+    ImportExportModule,
     KardexModule,
     LicenciaModule,
     MonedaModule,
