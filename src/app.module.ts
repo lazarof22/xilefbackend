@@ -13,6 +13,7 @@ import { ActivoFijoModule } from './modules/contabilidad/activoFijo/activo_fijo.
 import { AreaModule } from './modules/nomencladores/area/area.module';
 import { CategoriaModule } from './modules/nomencladores/categoria/categoria.module';
 import { EstadoModule } from './modules/nomencladores/estado/estado.module';
+import { GrupoActivoModule } from './modules/nomencladores/grupo_activo/grupo_activo.module';
 import { DepartamentoModule } from './modules/nomencladores/departamento/departamento.module';
 import { CargoEmpleadoModule } from './modules/nomencladores/cargo_empleado/cargo_empleado.module';
 import { CompraModule } from './modules/compra/compra/compra.module';
@@ -21,6 +22,7 @@ import { EmpresaModule } from './modules/clientes y provedores/empresa/empresa.m
 import { CuentaModule } from './modules/contabilidad/cuenta/cuenta.module';
 import { PaisModule } from './modules/nomencladores/pais/pais.module';
 import { ConceptoModule } from './modules/contabilidad/concepto/concepto.module';
+import { TasaDepreciacionModule } from './modules/nomencladores/tasa_depreciacion/tasa_depreciacion.module';
 import { MovimientoModule } from './modules/contabilidad/movimiento/movimiento.module';
 import { LicenciaModule } from './modules/configuracion/licencia/licencia.module';
 import { EmpresaDatosModule } from './modules/configuracion/empresa-datos/empresa-datos.module';
@@ -28,6 +30,7 @@ import { UsuariosModule } from './modules/configuracion/usuarios/usuarios.module
 import { ImportExportModule } from './modules/configuracion/import-export/import-export.module';
 import { ReportePlusModule } from './modules/venta/reporte_plus/reporte_plus.module';
 import { ReporteCajaModule } from './modules/venta/reporte_caja/reporte_caja.module';
+import { ConteoFisicoModule } from './modules/contabilidad/conteo_fisico/conteo_fisico.module';
 
 
 @Module({
@@ -56,6 +59,7 @@ import { ReporteCajaModule } from './modules/venta/reporte_caja/reporte_caja.mod
     EmpresaModule,
     EmpresaDatosModule,
     EstadoModule,
+    GrupoActivoModule,
     ImportExportModule,
     KardexModule,
     LicenciaModule,
@@ -66,8 +70,10 @@ import { ReporteCajaModule } from './modules/venta/reporte_caja/reporte_caja.mod
     UsuariosModule,
     VentaModule,
     MovimientoModule,
+    TasaDepreciacionModule,
     ReportePlusModule,
-    ReporteCajaModule
+    ReporteCajaModule,
+    ConteoFisicoModule
 
 
   ],

@@ -1,8 +1,9 @@
-import { IsNotEmpty, IsNumber, IsString } from "class-validator";
+import { IsNotEmpty, IsNumber, Min, Max } from "class-validator";
 
 export class CreateTasaDepreciacionDto {
 
-    @IsString()
     @IsNumber()
+    @Min(0)
+    @Max(100)
     tasa_depreciacion!:number
 }

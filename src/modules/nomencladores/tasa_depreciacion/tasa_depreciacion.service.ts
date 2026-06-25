@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { CreateTasaDepreciacionDto } from './dto/create-tasa_depreciacion.dto';
 import { UpdateTasaDepreciacionDto } from './dto/update-tasa_depreciacion.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Tasa_Depreciacion } from './schema/tasa_depresiacion.schema';
+import { Tasa_Depreciacion } from './schema/tasa_depreciacion.schema';
 import { Model } from 'mongoose';
 
 @Injectable()
