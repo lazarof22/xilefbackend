@@ -16,29 +16,58 @@ export class ActivoFijoService {
     private activoModel: Model<ActivoFijoDocument>,
   ) {}
 
-  async create(createActivoFijoDto: CreateActivoFijoDto): Promise<ActivoFijo> {
+  async create(createActivoFijoDto: CreateActivoFijoDto): Promise<ActivoFijo | { creados: number; activos: { _id: any; codigoActivo: string; descripcionActivo: string }[] }> {
     this.validarDatosDepreciacion(
       createActivoFijoDto.valorAdquisicion,
       createActivoFijoDto.valorResidual,
       createActivoFijoDto.vidaUtil,
     );
 
-    const depreciacion = this.calcularDepreciacionCompleta(
-      createActivoFijoDto.valorAdquisicion,
-      createActivoFijoDto.valorResidual,
-      createActivoFijoDto.vidaUtil,
-      createActivoFijoDto.fechaCompra,
-    );
+    const cantidad = createActivoFijoDto.cantidad ?? 1;
+    const baseCodigo = createActivoFijoDto.codigoActivo;
 
-    const activoCompleto = {
-      ...createActivoFijoDto,
-      ajusteValor: createActivoFijoDto.ajusteValor ?? 0,
-      activo: createActivoFijoDto.activo ?? true,
-      ...depreciacion,
+    const activos: Record<string, any>[] = [];
+    for (let i = 0; i < cantidad; i++) {
+      const codigo = cantidad > 1 ? `${baseCodigo}-${String(i + 1).padStart(3, '0')}` : baseCodigo;
+
+      const existente = await this.activoModel.findOne({ codigoActivo: codigo }).exec();
+      if (existente) {
+        throw new BadRequestException(`Ya existe un activo con código ${codigo}`);
+      }
+
+      const depreciacion = this.calcularDepreciacionCompleta(
+        createActivoFijoDto.valorAdquisicion,
+        createActivoFijoDto.valorResidual,
+        createActivoFijoDto.vidaUtil,
+        createActivoFijoDto.fechaCompra,
+      );
+
+      const activoCompleto = {
+        ...createActivoFijoDto,
+        codigoActivo: codigo,
+        cantidad: undefined,
+        ajusteValor: createActivoFijoDto.ajusteValor ?? 0,
+        activo: createActivoFijoDto.activo ?? true,
+        ...depreciacion,
+      };
+
+      activos.push(activoCompleto);
+    }
+
+    if (cantidad === 1) {
+      const created = new this.activoModel(activos[0]);
+      return created.save();
+    }
+
+    const creados = await this.activoModel.insertMany(activos);
+    return {
+      creados: creados.length,
+      activos: creados.map((a: any) => ({
+        _id: a._id,
+        codigoActivo: a.codigoActivo,
+        descripcionActivo: a.descripcionActivo,
+      })),
     };
-
-    const created = new this.activoModel(activoCompleto);
-    return created.save();
   }
 
   async findAll(): Promise<ActivoFijo[]> {

@@ -155,4 +155,10 @@ export class CreateActivoFijoDto {
   @IsBoolean()
   @IsOptional()
   activo?: boolean;
+
+  @ApiPropertyOptional({ description: 'Cantidad a crear (default: 1). Si es >1, se generan códigos secuenciales', default: 1 })
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  cantidad?: number;
 }

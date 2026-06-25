@@ -25,11 +25,13 @@ describe('ActivoFijoService', () => {
       save: mockSave,
     }));
     mockActivoModel.find = jest.fn(() => mockQueryBuilder);
+    mockActivoModel.findOne = jest.fn(() => mockQueryBuilder);
     mockActivoModel.findById = jest.fn(() => mockQueryBuilder);
     mockActivoModel.findByIdAndUpdate = jest.fn(() => mockQueryBuilder);
     mockActivoModel.findByIdAndDelete = jest.fn(() => mockQueryBuilder);
     mockActivoModel.countDocuments = jest.fn(() => mockQueryBuilder);
     mockActivoModel.aggregate = jest.fn(() => mockQueryBuilder);
+    mockActivoModel.insertMany = jest.fn();
 
     mockDocument = {
       _id: new Types.ObjectId(),
