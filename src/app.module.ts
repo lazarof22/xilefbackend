@@ -31,6 +31,7 @@ import { ImportExportModule } from './modules/configuracion/import-export/import
 import { ReportePlusModule } from './modules/venta/reporte_plus/reporte_plus.module';
 import { ReporteCajaModule } from './modules/venta/reporte_caja/reporte_caja.module';
 import { ConteoFisicoModule } from './modules/contabilidad/conteo_fisico/conteo_fisico.module';
+import { EnzonaModule } from './modules/finanzas/enzona/enzona.module';
 import { BancoModule } from './modules/finanzas/banco/banco.module';
 import { CuentaCobrarModule } from './modules/finanzas/cuenta-cobrar/cuenta-cobrar.module';
 import { CuentaPagarModule } from './modules/finanzas/cuenta-pagar/cuenta-pagar.module';
