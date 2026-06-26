@@ -4,10 +4,24 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, isValidObjectId } from 'mongoose';
+import { Model, isValidObjectId, Types } from 'mongoose';
 import { CreateActivoFijoDto } from './dto/create-activo_fijo.dto';
 import { UpdateActivoFijoDto } from './dto/update-activo_fijo.dto';
 import { ActivoFijo, ActivoFijoDocument } from './schema/activo_fijo.schema';
+import {
+  ActivoFijoExport,
+  ActivosPorEstadoItem,
+  CreateActivoResult,
+  CreacionMasivaResponse,
+  DepreciacionResult,
+  DepreciacionScheduleItem,
+  Estadisticas,
+  ResumenEconomico,
+  DeleteResponse,
+  RecalcularMasivoResponse,
+} from './types/activo_fijo.types';
+import { BajaActivoDto } from './dto/baja-activo.dto';
+import { RevaluacionActivoDto } from './dto/revaluacion-activo.dto';
 
 @Injectable()
 export class ActivoFijoService {
@@ -16,7 +30,7 @@ export class ActivoFijoService {
     private activoModel: Model<ActivoFijoDocument>,
   ) {}
 
-  async create(createActivoFijoDto: CreateActivoFijoDto): Promise<ActivoFijo | { creados: number; activos: { _id: any; codigoActivo: string; descripcionActivo: string }[] }> {
+  async create(createActivoFijoDto: CreateActivoFijoDto): Promise<CreateActivoResult> {
     this.validarDatosDepreciacion(
       createActivoFijoDto.valorAdquisicion,
       createActivoFijoDto.valorResidual,
@@ -26,7 +40,7 @@ export class ActivoFijoService {
     const cantidad = createActivoFijoDto.cantidad ?? 1;
     const baseCodigo = createActivoFijoDto.codigoActivo;
 
-    const activos: Record<string, any>[] = [];
+    const activos: Partial<ActivoFijo>[] = [];
     for (let i = 0; i < cantidad; i++) {
       const codigo = cantidad > 1 ? `${baseCodigo}-${String(i + 1).padStart(3, '0')}` : baseCodigo;
 
@@ -42,32 +56,35 @@ export class ActivoFijoService {
         createActivoFijoDto.fechaCompra,
       );
 
-      const activoCompleto = {
-        ...createActivoFijoDto,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { cantidad: _, ...rest } = createActivoFijoDto;
+
+      const activoCompleto: Record<string, unknown> = {
+        ...rest,
         codigoActivo: codigo,
-        cantidad: undefined,
         ajusteValor: createActivoFijoDto.ajusteValor ?? 0,
         activo: createActivoFijoDto.activo ?? true,
         ...depreciacion,
       };
 
-      activos.push(activoCompleto);
+      activos.push(activoCompleto as Partial<ActivoFijo>);
     }
 
     if (cantidad === 1) {
       const created = new this.activoModel(activos[0]);
-      return created.save();
+      return created.save() as unknown as ActivoFijoExport;
     }
 
     const creados = await this.activoModel.insertMany(activos);
-    return {
+    const response: CreacionMasivaResponse = {
       creados: creados.length,
-      activos: creados.map((a: any) => ({
-        _id: a._id,
-        codigoActivo: a.codigoActivo,
-        descripcionActivo: a.descripcionActivo,
+      activos: creados.map((a) => ({
+        _id: a._id as Types.ObjectId,
+        codigoActivo: a.codigoActivo as string,
+        descripcionActivo: a.descripcionActivo as string,
       })),
     };
+    return response;
   }
 
   async findAll(): Promise<ActivoFijo[]> {
@@ -125,7 +142,7 @@ export class ActivoFijoService {
       updateActivoFijoDto.vidaUtil !== undefined ||
       updateActivoFijoDto.fechaCompra !== undefined;
 
-    let datosActualizados: Record<string, any> = { ...updateActivoFijoDto };
+    let datosActualizados: Record<string, unknown> = { ...updateActivoFijoDto };
 
     if (debeRecalcular) {
       const nuevoValor =
@@ -156,7 +173,7 @@ export class ActivoFijoService {
     return updated;
   }
 
-  async remove(id: string): Promise<{ deleted: boolean }> {
+  async remove(id: string): Promise<DeleteResponse> {
     if (!isValidObjectId(id))
       throw new NotFoundException('Activo no encontrado');
     const removed = await this.activoModel.findByIdAndDelete(id).exec();
@@ -217,7 +234,7 @@ export class ActivoFijoService {
     return updated!;
   }
 
-  async recalcularDepreciacionMasiva(): Promise<{ modificados: number }> {
+  async recalcularDepreciacionMasiva(): Promise<RecalcularMasivoResponse> {
     const activos = await this.activoModel.find({ activo: true }).exec();
     let count = 0;
 
@@ -241,7 +258,7 @@ export class ActivoFijoService {
     return { modificados: count };
   }
 
-  async getEstadisticas(): Promise<any> {
+  async getEstadisticas(): Promise<Estadisticas> {
     const totalActivos = await this.activoModel
       .countDocuments({ activo: true })
       .exec();
@@ -304,13 +321,7 @@ export class ActivoFijoService {
 
   async registrarBaja(
     id: string,
-    bajaDto: {
-      fechaBaja: string;
-      motivoBaja: string;
-      tipoBaja: string;
-      valorBaja: number;
-      documentoBaja?: string;
-    },
+    bajaDto: BajaActivoDto,
   ): Promise<ActivoFijo> {
     if (!isValidObjectId(id)) throw new NotFoundException('Activo no encontrado');
     const activo = await this.activoModel.findById(id).exec();
@@ -337,12 +348,7 @@ export class ActivoFijoService {
 
   async registrarRevaluacion(
     id: string,
-    revaluacionDto: {
-      fechaRevaluacion: string;
-      valorAvaluo: number;
-      entidadAvaluadora: string;
-      documentoRevaluacion?: string;
-    },
+    revaluacionDto: RevaluacionActivoDto,
   ): Promise<ActivoFijo> {
     if (!isValidObjectId(id)) throw new NotFoundException('Activo no encontrado');
     const activo = await this.activoModel.findById(id).exec();
@@ -372,7 +378,7 @@ export class ActivoFijoService {
     return updated;
   }
 
-  async getActivosPorEstado(): Promise<any> {
+  async getActivosPorEstado(): Promise<ActivosPorEstadoItem[]> {
     return this.activoModel.aggregate([
       {
         $group: {
@@ -387,7 +393,7 @@ export class ActivoFijoService {
     ]).exec();
   }
 
-  async getResumenEconomico(): Promise<any> {
+  async getResumenEconomico(): Promise<ResumenEconomico> {
     const activosActivos = await this.activoModel.countDocuments({ activo: true }).exec();
     const activosBaja = await this.activoModel.countDocuments({ activo: false }).exec();
     const totalGeneral = activosActivos + activosBaja;
@@ -433,7 +439,7 @@ export class ActivoFijoService {
     };
   }
 
-  async getDepreciacionSchedule(): Promise<any[]> {
+  async getDepreciacionSchedule(): Promise<DepreciacionScheduleItem[]> {
     return this.activoModel
       .aggregate([
         { $match: { activo: true } },
@@ -478,7 +484,7 @@ export class ActivoFijoService {
     valorResidual: number,
     vidaUtil: number,
     fechaCompra: string | Date,
-  ) {
+  ): DepreciacionResult {
     this.validarDatosDepreciacion(costoAdquisicion, valorResidual, vidaUtil);
     return this.calcularDepreciacionCompleta(
       costoAdquisicion,
@@ -511,7 +517,7 @@ export class ActivoFijoService {
     valorResidual: number,
     vidaUtil: number,
     fechaCompra: string | Date,
-  ) {
+  ): DepreciacionResult {
     const depreciacionAnual = Number(
       ((costoAdquisicion - valorResidual) / vidaUtil).toFixed(2),
     );

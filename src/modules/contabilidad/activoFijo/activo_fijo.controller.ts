@@ -10,7 +10,21 @@ import {
 import { ActivoFijoService } from './activo_fijo.service';
 import { CreateActivoFijoDto } from './dto/create-activo_fijo.dto';
 import { UpdateActivoFijoDto } from './dto/update-activo_fijo.dto';
+import { BajaActivoDto } from './dto/baja-activo.dto';
+import { RevaluacionActivoDto } from './dto/revaluacion-activo.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ActivoFijoExport,
+  ActivosPorEstadoItem,
+  CreateActivoResult,
+  DeleteResponse,
+  DepreciacionAnualResponse,
+  DepreciacionMensualResponse,
+  DepreciacionScheduleItem,
+  Estadisticas,
+  RecalcularMasivoResponse,
+  ResumenEconomico,
+} from './types/activo_fijo.types';
 
 @ApiTags('Activos Fijos')
 @Controller('activofijo')
@@ -24,26 +38,26 @@ export class ActivoFijoController {
     description: 'Activo fijo registrado exitosamente',
   })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  create(@Body() createActivoFijoDto: CreateActivoFijoDto) {
+  create(@Body() createActivoFijoDto: CreateActivoFijoDto): Promise<CreateActivoResult> {
     return this.activoFijoService.create(createActivoFijoDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener todos los activos fijos' })
   @ApiResponse({ status: 200, description: 'Lista de activos fijos' })
-  findAll() {
-    return this.activoFijoService.findAll();
+  findAll(): Promise<ActivoFijoExport[]> {
+    return this.activoFijoService.findAll() as Promise<ActivoFijoExport[]>;
   }
 
   @Get('activos')
   @ApiOperation({ summary: 'Obtener solo activos vigentes' })
-  findActivos() {
-    return this.activoFijoService.findActivos();
+  findActivos(): Promise<ActivoFijoExport[]> {
+    return this.activoFijoService.findActivos() as Promise<ActivoFijoExport[]>;
   }
 
   @Get('estadisticas')
   @ApiOperation({ summary: 'Obtener estadísticas de activos fijos' })
-  getEstadisticas() {
+  getEstadisticas(): Promise<Estadisticas> {
     return this.activoFijoService.getEstadisticas();
   }
 
@@ -51,72 +65,61 @@ export class ActivoFijoController {
   @ApiOperation({
     summary: 'Obtener calendario de depreciación de todos los activos',
   })
-  getDepreciacionSchedule() {
+  getDepreciacionSchedule(): Promise<DepreciacionScheduleItem[]> {
     return this.activoFijoService.getDepreciacionSchedule();
   }
 
   @Get('area/:areaId')
   @ApiOperation({ summary: 'Obtener activos por área' })
-  findByArea(@Param('areaId') areaId: string) {
-    return this.activoFijoService.findByArea(areaId);
+  findByArea(@Param('areaId') areaId: string): Promise<ActivoFijoExport[]> {
+    return this.activoFijoService.findByArea(areaId) as Promise<ActivoFijoExport[]>;
   }
 
   @Get('estado/:estadoId')
   @ApiOperation({ summary: 'Obtener activos por estado' })
-  findByEstado(@Param('estadoId') estadoId: string) {
-    return this.activoFijoService.findByEstado(estadoId);
+  findByEstado(@Param('estadoId') estadoId: string): Promise<ActivoFijoExport[]> {
+    return this.activoFijoService.findByEstado(estadoId) as Promise<ActivoFijoExport[]>;
   }
 
   @Post(':id/baja')
   @ApiOperation({ summary: 'Registrar baja de un activo fijo' })
-  async registrarBaja(
+  registrarBaja(
     @Param('id') id: string,
-    @Body() bajaDto: {
-      fechaBaja: string;
-      motivoBaja: string;
-      tipoBaja: string;
-      valorBaja: number;
-      documentoBaja?: string;
-    },
-  ) {
-    return this.activoFijoService.registrarBaja(id, bajaDto);
+    @Body() bajaDto: BajaActivoDto,
+  ): Promise<ActivoFijoExport> {
+    return this.activoFijoService.registrarBaja(id, bajaDto) as Promise<ActivoFijoExport>;
   }
 
   @Post(':id/revaluacion')
   @ApiOperation({ summary: 'Registrar revaluación de un activo fijo (Res. 83/2012 mod. Res. 128/2025)' })
-  async registrarRevaluacion(
+  registrarRevaluacion(
     @Param('id') id: string,
-    @Body() revaluacionDto: {
-      fechaRevaluacion: string;
-      valorAvaluo: number;
-      entidadAvaluadora: string;
-      documentoRevaluacion?: string;
-    },
-  ) {
-    return this.activoFijoService.registrarRevaluacion(id, revaluacionDto);
+    @Body() revaluacionDto: RevaluacionActivoDto,
+  ): Promise<ActivoFijoExport> {
+    return this.activoFijoService.registrarRevaluacion(id, revaluacionDto) as Promise<ActivoFijoExport>;
   }
 
   @Get('reportes/estado')
   @ApiOperation({ summary: 'Reporte de activos agrupados por estado' })
-  getActivosPorEstado() {
+  getActivosPorEstado(): Promise<ActivosPorEstadoItem[]> {
     return this.activoFijoService.getActivosPorEstado();
   }
 
   @Get('reportes/resumen-economico')
   @ApiOperation({ summary: 'Resumen económico de activos fijos (para el económico)' })
-  getResumenEconomico() {
+  getResumenEconomico(): Promise<ResumenEconomico> {
     return this.activoFijoService.getResumenEconomico();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un activo fijo por ID' })
-  findOne(@Param('id') id: string) {
-    return this.activoFijoService.findOne(id);
+  findOne(@Param('id') id: string): Promise<ActivoFijoExport> {
+    return this.activoFijoService.findOne(id) as Promise<ActivoFijoExport>;
   }
 
   @Get(':id/depreciacion/anual')
   @ApiOperation({ summary: 'Calcular depreciación anual de un activo' })
-  async calcularDepreciacionAnual(@Param('id') id: string) {
+  async calcularDepreciacionAnual(@Param('id') id: string): Promise<DepreciacionAnualResponse> {
     const activo = await this.activoFijoService.findOne(id);
     const depreciacionAnual =
       this.activoFijoService.calcularDepreciacionLineaRecta(
@@ -138,7 +141,7 @@ export class ActivoFijoController {
   @ApiOperation({
     summary: 'Calcular depreciación mensual y acumulada de un activo',
   })
-  async calcularDepreciacionMensual(@Param('id') id: string) {
+  async calcularDepreciacionMensual(@Param('id') id: string): Promise<DepreciacionMensualResponse> {
     const activo = await this.activoFijoService.findOne(id);
     const resultado =
       this.activoFijoService.calcularDepreciacionAcumuladaMensual(
@@ -160,15 +163,15 @@ export class ActivoFijoController {
 
   @Post(':id/recalcular-depreciacion')
   @ApiOperation({ summary: 'Recalcular depreciación de un activo' })
-  recalcularDepreciacion(@Param('id') id: string) {
-    return this.activoFijoService.recalcularDepreciacion(id);
+  recalcularDepreciacion(@Param('id') id: string): Promise<ActivoFijoExport> {
+    return this.activoFijoService.recalcularDepreciacion(id) as Promise<ActivoFijoExport>;
   }
 
   @Post('recalcular-depreciacion-masiva')
   @ApiOperation({
     summary: 'Recalcular depreciación de todos los activos activos',
   })
-  recalcularDepreciacionMasiva() {
+  recalcularDepreciacionMasiva(): Promise<RecalcularMasivoResponse> {
     return this.activoFijoService.recalcularDepreciacionMasiva();
   }
 
@@ -177,13 +180,13 @@ export class ActivoFijoController {
   update(
     @Param('id') id: string,
     @Body() updateActivoFijoDto: UpdateActivoFijoDto,
-  ) {
-    return this.activoFijoService.update(id, updateActivoFijoDto);
+  ): Promise<ActivoFijoExport> {
+    return this.activoFijoService.update(id, updateActivoFijoDto) as Promise<ActivoFijoExport>;
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar un activo fijo' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string): Promise<DeleteResponse> {
     return this.activoFijoService.remove(id);
   }
 }
