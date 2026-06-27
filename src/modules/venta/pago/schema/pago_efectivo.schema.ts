@@ -44,8 +44,23 @@ export class DesgloseBilletes {
     billete1!: number;
 }
 
+export enum TipoCliente{
+    CLIENTEESTANDAR = "cliente-estandar",
+    CLIENTEPORDESCUENTO = "cliente-por-descuento",
+    CLIENTECUENTACASA = "cliente-cuenta-casa",  
+}
 
+@Schema()
+export class DatosClienteDescuento {
+    @Prop({ required: true })
+    nombre!: string;
 
+    @Prop({ required: true })
+    ci!: string;
+
+    @Prop({ required: true })
+    telefono!: string;
+}
 
 @Schema()
 export class PagoEfectivo extends Pago {
@@ -53,20 +68,31 @@ export class PagoEfectivo extends Pago {
     @Prop({ required: true, type: DesgloseBilletes })
     desglose!: DesgloseBilletes;
 
-    @Prop({ required: true })
+    @Prop({ })
     monto_pagar_CUP!: number;
 
-    @Prop({ required: true })
+    @Prop({  })
     monto_pagar_alCambio!: number;
 
     @Prop({ required: true})
     cambio!:number;
+
+    @Prop({ required: true, enum: TipoCliente })
+    cliente!: TipoCliente;
     
     @Prop()
     monto_pagado!: number;
 
     @Prop({ type: Types.ObjectId, ref: 'Moneda', required: true })
     moneda!: Types.ObjectId
+
+    // ✅ NUEVO: Datos del cliente cuando es "cliente-por-descuento"
+    @Prop({ type: DatosClienteDescuento, required: false })
+    datosClienteDescuento?: DatosClienteDescuento;
+
+    // ✅ NUEVO: Indica si es cliente cuenta casa (monto pagado = 0)
+    @Prop({ required: true, default: false })
+    esCuentaCasa!: boolean;
 }
 
 export const PagoEfectivoSchema = SchemaFactory.createForClass(PagoEfectivo);
