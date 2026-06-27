@@ -2,25 +2,36 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
 export enum TipoMovimiento {
-  TRASLADO = 'traslado',                  // Cambio de área/ubicación
-  ENVIADO_REPARAR = 'enviado_a_reparar', // A taller  
-  BAJA = 'baja',                          // Retiro del activo
-  ACTIVO_OSCIOSO = 'activo_oscioso',      // Inactivo temporalmente  
+  ALTA = 'alta',
+  MODIFICACION = 'modificacion',
+  TRASLADO = 'traslado',
+  BAJA_PARCIAL = 'baja_parcial',
+  BAJA_TOTAL = 'baja_total',
+  REVALUACION = 'revaluacion',
+  DEPRECIACION = 'depreciacion',
+  REPARACION = 'reparacion',
 }
 
 export type MovimientoDocument = HydratedDocument<Movimiento>;
 
-@Schema()
+@Schema({ timestamps: true })
 export class Movimiento {
-
-  @Prop({ required: true, type: Types.ObjectId, ref: 'ActivoFijo', index: true })
+  @Prop({
+    required: true,
+    type: Types.ObjectId,
+    ref: 'ActivoFijo',
+    index: true,
+  })
   activoFijo!: Types.ObjectId;
 
-  @Prop({ required: true, enum: TipoMovimiento })
+  @Prop({ required: true, enum: TipoMovimiento, index: true })
   tipo!: TipoMovimiento;
 
   @Prop({ required: true })
   fechaMovimiento!: Date;
+
+  @Prop({ required: true })
+  descripcion!: string;
 
   @Prop({ type: Types.ObjectId, ref: 'Area' })
   areaOrigen?: Types.ObjectId;
@@ -47,7 +58,19 @@ export class Movimiento {
   depreciacionAcumuladaNueva?: number;
 
   @Prop()
-  descripcion!: string;
+  valorBaja?: number;
+
+  @Prop()
+  motivoBaja?: string;
+
+  @Prop()
+  costoReparacion?: number;
+
+  @Prop({ type: Types.ObjectId, ref: 'Empresa' })
+  proveedorReparacion?: Types.ObjectId;
+
+  @Prop()
+  documentoReferencia?: string;
 }
 
 export const MovimientoSchema = SchemaFactory.createForClass(Movimiento);

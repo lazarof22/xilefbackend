@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, isValidObjectId } from 'mongoose';
 import { CreateActivoFijoDto } from './dto/create-activo_fijo.dto';
@@ -7,87 +11,131 @@ import { ActivoFijo, ActivoFijoDocument } from './schema/activo_fijo.schema';
 
 @Injectable()
 export class ActivoFijoService {
-  constructor(@InjectModel(ActivoFijo.name) private activoModel: Model<ActivoFijoDocument>) {}
+  constructor(
+    @InjectModel(ActivoFijo.name)
+    private activoModel: Model<ActivoFijoDocument>,
+  ) {}
 
-  // ═══════════════════════════════════════════════════
-  // CREAR ACTIVO CON DEPRECIACIÓN AUTO-CALCULADA
-  // ═══════════════════════════════════════════════════
-  async create(createActivoFijoDto: CreateActivoFijoDto): Promise<ActivoFijo> {
-    // Validar datos
+  async create(createActivoFijoDto: CreateActivoFijoDto): Promise<ActivoFijo | { creados: number; activos: { _id: any; codigoActivo: string; descripcionActivo: string }[] }> {
     this.validarDatosDepreciacion(
-      createActivoFijoDto.valor,
+      createActivoFijoDto.valorAdquisicion,
       createActivoFijoDto.valorResidual,
       createActivoFijoDto.vidaUtil,
     );
 
-    // Calcular todos los campos de depreciación
-    const depreciacion = this.calcularDepreciacionCompleta(
-      createActivoFijoDto.valor,
-      createActivoFijoDto.valorResidual,
-      createActivoFijoDto.vidaUtil,
-      createActivoFijoDto.fechaCompra,
-    );
+    const cantidad = createActivoFijoDto.cantidad ?? 1;
+    const baseCodigo = createActivoFijoDto.codigoActivo;
 
-    // Combinar DTO con campos calculados
-    const activoCompleto = {
-      ...createActivoFijoDto,
-      ajusteValor: createActivoFijoDto.ajusteValor ?? 0,
-      ...depreciacion,
+    const activos: Record<string, any>[] = [];
+    for (let i = 0; i < cantidad; i++) {
+      const codigo = cantidad > 1 ? `${baseCodigo}-${String(i + 1).padStart(3, '0')}` : baseCodigo;
+
+      const existente = await this.activoModel.findOne({ codigoActivo: codigo }).exec();
+      if (existente) {
+        throw new BadRequestException(`Ya existe un activo con código ${codigo}`);
+      }
+
+      const depreciacion = this.calcularDepreciacionCompleta(
+        createActivoFijoDto.valorAdquisicion,
+        createActivoFijoDto.valorResidual,
+        createActivoFijoDto.vidaUtil,
+        createActivoFijoDto.fechaCompra,
+      );
+
+      const activoCompleto = {
+        ...createActivoFijoDto,
+        codigoActivo: codigo,
+        cantidad: undefined,
+        ajusteValor: createActivoFijoDto.ajusteValor ?? 0,
+        activo: createActivoFijoDto.activo ?? true,
+        ...depreciacion,
+      };
+
+      activos.push(activoCompleto);
+    }
+
+    if (cantidad === 1) {
+      const created = new this.activoModel(activos[0]);
+      return created.save();
+    }
+
+    const creados = await this.activoModel.insertMany(activos);
+    return {
+      creados: creados.length,
+      activos: creados.map((a: any) => ({
+        _id: a._id,
+        codigoActivo: a.codigoActivo,
+        descripcionActivo: a.descripcionActivo,
+      })),
     };
-
-    const created = new this.activoModel(activoCompleto);
-    return created.save();
   }
 
-  async findAll() {
-    return this.activoModel.find()
-      .populate('empresa')
+  async findAll(): Promise<ActivoFijo[]> {
+    return this.activoModel
+      .find()
+      .populate('proveedor')
       .populate('area')
-      .populate('tasa_depreciacion')
+      .populate('grupoActivo')
+      .populate('tasaDepreciacion')
       .populate('moneda')
       .populate('pais')
       .populate('concepto')
-      .populate('movimiento')
-      .populate('estado')
+      .populate('estadoActivo')
+      .populate('cuentaDebe')
+      .populate('cuentaHaber')
+      .populate('cuentaDepreciacion')
+      .sort({ createdAt: -1 })
       .exec();
   }
 
-  async findOne(id: string) {
-    if (!isValidObjectId(id)) throw new NotFoundException('Activo no encontrado');
-    const doc = await this.activoModel.findById(id)
+  async findOne(id: string): Promise<ActivoFijo> {
+    if (!isValidObjectId(id))
+      throw new NotFoundException('Activo no encontrado');
+    const doc = await this.activoModel
+      .findById(id)
       .populate('proveedor')
       .populate('area')
-      .populate('depreciacionActivo')
+      .populate('grupoActivo')
+      .populate('tasaDepreciacion')
       .populate('moneda')
       .populate('pais')
       .populate('concepto')
-      .populate('movimiento')
       .populate('estadoActivo')
+      .populate('cuentaDebe')
+      .populate('cuentaHaber')
+      .populate('cuentaDepreciacion')
       .exec();
     if (!doc) throw new NotFoundException('Activo no encontrado');
     return doc;
   }
 
-  async update(id: string, updateActivoFijoDto: UpdateActivoFijoDto) {
-    if (!isValidObjectId(id)) throw new NotFoundException('Activo no encontrado');
+  async update(
+    id: string,
+    updateActivoFijoDto: UpdateActivoFijoDto,
+  ): Promise<ActivoFijo> {
+    if (!isValidObjectId(id))
+      throw new NotFoundException('Activo no encontrado');
 
     const activoActual = await this.activoModel.findById(id).exec();
     if (!activoActual) throw new NotFoundException('Activo no encontrado');
 
-    // Determinar si hay que recalcular depreciación
     const debeRecalcular =
-      updateActivoFijoDto.valor !== undefined ||
+      updateActivoFijoDto.valorAdquisicion !== undefined ||
       updateActivoFijoDto.valorResidual !== undefined ||
       updateActivoFijoDto.vidaUtil !== undefined ||
       updateActivoFijoDto.fechaCompra !== undefined;
 
-    let datosActualizados: any = { ...updateActivoFijoDto };
+    let datosActualizados: Record<string, any> = { ...updateActivoFijoDto };
 
     if (debeRecalcular) {
-      const nuevoValor = updateActivoFijoDto.valor ?? activoActual.valor;
-      const nuevoResidual = updateActivoFijoDto.valorResidual ?? activoActual.valorResidual;
-      const nuevaVidaUtil = updateActivoFijoDto.vidaUtil ?? activoActual.vidaUtil;
-      const nuevaFecha = updateActivoFijoDto.fechaCompra ?? activoActual.fechaCompra;
+      const nuevoValor =
+        updateActivoFijoDto.valorAdquisicion ?? activoActual.valorAdquisicion;
+      const nuevoResidual =
+        updateActivoFijoDto.valorResidual ?? activoActual.valorResidual;
+      const nuevaVidaUtil =
+        updateActivoFijoDto.vidaUtil ?? activoActual.vidaUtil;
+      const nuevaFecha =
+        updateActivoFijoDto.fechaCompra ?? activoActual.fechaCompra;
 
       this.validarDatosDepreciacion(nuevoValor, nuevoResidual, nuevaVidaUtil);
 
@@ -98,44 +146,331 @@ export class ActivoFijoService {
         nuevaFecha instanceof Date ? nuevaFecha.toISOString() : nuevaFecha,
       );
 
-      datosActualizados = {
-        ...datosActualizados,
-        ...depreciacion,
-      };
+      datosActualizados = { ...datosActualizados, ...depreciacion };
     }
 
-    const updated = await this.activoModel.findByIdAndUpdate(
-      id,
-      datosActualizados,
-      { new: true },
-    ).exec();
-
+    const updated = await this.activoModel
+      .findByIdAndUpdate(id, datosActualizados, { new: true })
+      .exec();
     if (!updated) throw new NotFoundException('Activo no encontrado');
     return updated;
   }
 
-  async remove(id: string) {
-    if (!isValidObjectId(id)) throw new NotFoundException('Activo no encontrado');
+  async remove(id: string): Promise<{ deleted: boolean }> {
+    if (!isValidObjectId(id))
+      throw new NotFoundException('Activo no encontrado');
     const removed = await this.activoModel.findByIdAndDelete(id).exec();
     if (!removed) throw new NotFoundException('Activo no encontrado');
     return { deleted: true };
   }
 
-  // ═══════════════════════════════════════════════════
-  // MÉTODOS PÚBLICOS PARA EL CONTROLLER
-  // ═══════════════════════════════════════════════════
+  async findByArea(areaId: string): Promise<ActivoFijo[]> {
+    if (!isValidObjectId(areaId)) throw new NotFoundException('Área no válida');
+    return this.activoModel
+      .find({ area: areaId })
+      .populate('proveedor')
+      .populate('area')
+      .populate('estadoActivo')
+      .exec();
+  }
 
-  /**
-   * Fórmula: (costoAdquisicion - valorResidual) / vidaUtil
-   */
+  async findByEstado(estadoId: string): Promise<ActivoFijo[]> {
+    if (!isValidObjectId(estadoId))
+      throw new NotFoundException('Estado no válido');
+    return this.activoModel
+      .find({ estadoActivo: estadoId })
+      .populate('area')
+      .populate('estadoActivo')
+      .exec();
+  }
+
+  async findActivos(): Promise<ActivoFijo[]> {
+    return this.activoModel
+      .find({ activo: true })
+      .populate('area')
+      .populate('estadoActivo')
+      .populate('proveedor')
+      .sort({ codigoActivo: 1 })
+      .exec();
+  }
+
+  async recalcularDepreciacion(id: string): Promise<ActivoFijo> {
+    if (!isValidObjectId(id))
+      throw new NotFoundException('Activo no encontrado');
+    const activo = await this.activoModel.findById(id).exec();
+    if (!activo) throw new NotFoundException('Activo no encontrado');
+
+    const depreciacion = this.calcularDepreciacionCompleta(
+      activo.valorAdquisicion,
+      activo.valorResidual,
+      activo.vidaUtil,
+      activo.fechaCompra,
+    );
+
+    const updated = await this.activoModel
+      .findByIdAndUpdate(
+        id,
+        { ...depreciacion, fechaUltimaDepreciacion: new Date() },
+        { new: true },
+      )
+      .exec();
+    return updated!;
+  }
+
+  async recalcularDepreciacionMasiva(): Promise<{ modificados: number }> {
+    const activos = await this.activoModel.find({ activo: true }).exec();
+    let count = 0;
+
+    for (const activo of activos) {
+      const depreciacion = this.calcularDepreciacionCompleta(
+        activo.valorAdquisicion,
+        activo.valorResidual,
+        activo.vidaUtil,
+        activo.fechaCompra,
+      );
+
+      await this.activoModel
+        .findByIdAndUpdate(activo._id, {
+          ...depreciacion,
+          fechaUltimaDepreciacion: new Date(),
+        })
+        .exec();
+      count++;
+    }
+
+    return { modificados: count };
+  }
+
+  async getEstadisticas(): Promise<any> {
+    const totalActivos = await this.activoModel
+      .countDocuments({ activo: true })
+      .exec();
+    const totalBajas = await this.activoModel
+      .countDocuments({ activo: false })
+      .exec();
+    const totalValor = await this.activoModel
+      .aggregate([
+        { $match: { activo: true } },
+        { $group: { _id: null, total: { $sum: '$valorAdquisicion' } } },
+      ])
+      .exec();
+
+    const totalDepreciacion = await this.activoModel
+      .aggregate([
+        { $match: { activo: true } },
+        { $group: { _id: null, total: { $sum: '$depreciacionAcumulada' } } },
+      ])
+      .exec();
+
+    const totalValorLibros = await this.activoModel
+      .aggregate([
+        { $match: { activo: true } },
+        { $group: { _id: null, total: { $sum: '$valorEnLibros' } } },
+      ])
+      .exec();
+
+    const porEstado = await this.activoModel
+      .aggregate([
+        { $match: { activo: true } },
+        { $group: { _id: '$estadoActivo', count: { $sum: 1 } } },
+      ])
+      .exec();
+
+    const porArea = await this.activoModel
+      .aggregate([
+        { $match: { activo: true } },
+        {
+          $group: {
+            _id: '$area',
+            count: { $sum: 1 },
+            totalValor: { $sum: '$valorAdquisicion' },
+          },
+        },
+      ])
+      .exec();
+
+    return {
+      totalActivos,
+      totalBajas,
+      valorAdquisicionTotal: totalValor.length > 0 ? totalValor[0].total : 0,
+      depreciacionAcumuladaTotal:
+        totalDepreciacion.length > 0 ? totalDepreciacion[0].total : 0,
+      valorEnLibrosTotal:
+        totalValorLibros.length > 0 ? totalValorLibros[0].total : 0,
+      porEstado,
+      porArea,
+    };
+  }
+
+  async registrarBaja(
+    id: string,
+    bajaDto: {
+      fechaBaja: string;
+      motivoBaja: string;
+      tipoBaja: string;
+      valorBaja: number;
+      documentoBaja?: string;
+    },
+  ): Promise<ActivoFijo> {
+    if (!isValidObjectId(id)) throw new NotFoundException('Activo no encontrado');
+    const activo = await this.activoModel.findById(id).exec();
+    if (!activo) throw new NotFoundException('Activo no encontrado');
+    if (!activo.activo) throw new BadRequestException('El activo ya está dado de baja');
+
+    const gananciaPerdidaBaja = Number((bajaDto.valorBaja - activo.valorEnLibros).toFixed(2));
+
+    const datosBaja = {
+      activo: false,
+      fechaBaja: new Date(bajaDto.fechaBaja),
+      motivoBaja: bajaDto.motivoBaja,
+      tipoBaja: bajaDto.tipoBaja,
+      valorBaja: bajaDto.valorBaja,
+      documentoBaja: bajaDto.documentoBaja || undefined,
+      gananciaPerdidaBaja,
+      estadoActivo: undefined,
+    };
+
+    const updated = await this.activoModel.findByIdAndUpdate(id, datosBaja, { new: true }).exec();
+    if (!updated) throw new NotFoundException('Activo no encontrado');
+    return updated;
+  }
+
+  async registrarRevaluacion(
+    id: string,
+    revaluacionDto: {
+      fechaRevaluacion: string;
+      valorAvaluo: number;
+      entidadAvaluadora: string;
+      documentoRevaluacion?: string;
+    },
+  ): Promise<ActivoFijo> {
+    if (!isValidObjectId(id)) throw new NotFoundException('Activo no encontrado');
+    const activo = await this.activoModel.findById(id).exec();
+    if (!activo) throw new NotFoundException('Activo no encontrado');
+    if (!activo.activo) throw new BadRequestException('No se puede revaluar un activo dado de baja');
+
+    const diferenciaRevaluacion = revaluacionDto.valorAvaluo - activo.valorAdquisicion;
+
+    const depreciacion = this.calcularDepreciacionCompleta(
+      revaluacionDto.valorAvaluo,
+      activo.valorResidual,
+      activo.vidaUtil,
+      activo.fechaCompra,
+    );
+
+    const datosRevaluacion = {
+      valorAdquisicion: revaluacionDto.valorAvaluo,
+      valorAvaluo: revaluacionDto.valorAvaluo,
+      entidadAvaluadora: revaluacionDto.entidadAvaluadora,
+      fechaUltimaRevaluacion: new Date(revaluacionDto.fechaRevaluacion),
+      revaluacionAcumulada: activo.revaluacionAcumulada + diferenciaRevaluacion,
+      ...depreciacion,
+    };
+
+    const updated = await this.activoModel.findByIdAndUpdate(id, datosRevaluacion, { new: true }).exec();
+    if (!updated) throw new NotFoundException('Activo no encontrado');
+    return updated;
+  }
+
+  async getActivosPorEstado(): Promise<any> {
+    return this.activoModel.aggregate([
+      {
+        $group: {
+          _id: '$estadoActivo',
+          cantidad: { $sum: 1 },
+          valorAdquisicionTotal: { $sum: '$valorAdquisicion' },
+          valorLibrosTotal: { $sum: '$valorEnLibros' },
+          depreciacionTotal: { $sum: '$depreciacionAcumulada' },
+        },
+      },
+      { $sort: { cantidad: -1 } },
+    ]).exec();
+  }
+
+  async getResumenEconomico(): Promise<any> {
+    const activosActivos = await this.activoModel.countDocuments({ activo: true }).exec();
+    const activosBaja = await this.activoModel.countDocuments({ activo: false }).exec();
+    const totalGeneral = activosActivos + activosBaja;
+
+    const totals = await this.activoModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          valorAdquisicion: { $sum: '$valorAdquisicion' },
+          valorResidual: { $sum: '$valorResidual' },
+          depreciacionAcumulada: { $sum: '$depreciacionAcumulada' },
+          valorEnLibros: { $sum: '$valorEnLibros' },
+          revaluacionAcumulada: { $sum: '$revaluacionAcumulada' },
+        },
+      },
+    ]).exec();
+
+    const activosAct = totals.length > 0 ? totals[0] : {
+      valorAdquisicion: 0,
+      valorResidual: 0,
+      depreciacionAcumulada: 0,
+      valorEnLibros: 0,
+      revaluacionAcumulada: 0,
+    };
+
+    return {
+      resumenGeneral: {
+        totalActivos: totalGeneral,
+        activosVigentes: activosActivos,
+        activosBaja,
+        porcentajeBaja: totalGeneral > 0 ? Number(((activosBaja / totalGeneral) * 100).toFixed(2)) : 0,
+      },
+      resumenValores: {
+        valorAdquisicionTotal: activosAct.valorAdquisicion,
+        valorResidualTotal: activosAct.valorResidual,
+        depreciacionAcumuladaTotal: activosAct.depreciacionAcumulada,
+        valorLibrosTotal: activosAct.valorEnLibros,
+        revaluacionAcumuladaTotal: activosAct.revaluacionAcumulada,
+        porcentajeDepreciado: activosAct.valorAdquisicion > 0
+          ? Number(((activosAct.depreciacionAcumulada / activosAct.valorAdquisicion) * 100).toFixed(2))
+          : 0,
+      },
+    };
+  }
+
+  async getDepreciacionSchedule(): Promise<any[]> {
+    return this.activoModel
+      .aggregate([
+        { $match: { activo: true } },
+        {
+          $project: {
+            codigoActivo: 1,
+            descripcionActivo: 1,
+            valorAdquisicion: 1,
+            valorResidual: 1,
+            vidaUtil: 1,
+            depreciacionAnual: 1,
+            depreciacionMensual: 1,
+            depreciacionAcumulada: 1,
+            valorEnLibros: 1,
+            fechaCompra: 1,
+            anosTranscurridos: {
+              $floor: {
+                $divide: [
+                  { $subtract: [new Date(), '$fechaCompra'] },
+                  365 * 24 * 60 * 60 * 1000,
+                ],
+              },
+            },
+          },
+        },
+        { $sort: { codigoActivo: 1 } },
+      ])
+      .exec();
+  }
+
   calcularDepreciacionLineaRecta(
     costoAdquisicion: number,
     valorResidual: number,
     vidaUtil: number,
   ): number {
     this.validarDatosDepreciacion(costoAdquisicion, valorResidual, vidaUtil);
-    const depreciacionAnual = (costoAdquisicion - valorResidual) / vidaUtil;
-    return Number(depreciacionAnual.toFixed(2));
+    return Number(((costoAdquisicion - valorResidual) / vidaUtil).toFixed(2));
   }
 
   calcularDepreciacionAcumuladaMensual(
@@ -152,10 +487,6 @@ export class ActivoFijoService {
       fechaCompra,
     );
   }
-
-  // ═══════════════════════════════════════════════════
-  // MÉTODOS PRIVADOS
-  // ═══════════════════════════════════════════════════
 
   private validarDatosDepreciacion(
     costoAdquisicion: number,
@@ -181,15 +512,11 @@ export class ActivoFijoService {
     vidaUtil: number,
     fechaCompra: string | Date,
   ) {
-    // Depreciación anual: (costo - residual) / vida útil
     const depreciacionAnual = Number(
       ((costoAdquisicion - valorResidual) / vidaUtil).toFixed(2),
     );
-
-    // Depreciación mensual
     const depreciacionMensual = Number((depreciacionAnual / 12).toFixed(2));
 
-    // Calcular meses transcurridos desde la compra
     const fechaInicio = new Date(fechaCompra);
     const hoy = new Date();
 
@@ -203,25 +530,23 @@ export class ActivoFijoService {
 
     mesesTranscurridos = Math.max(0, mesesTranscurridos);
 
-    // Depreciación acumulada
     let depreciacionAcumulada = depreciacionMensual * mesesTranscurridos;
-
-    // Ajustar si supera el valor depreciable total
     const valorDepreciable = costoAdquisicion - valorResidual;
     if (depreciacionAcumulada > valorDepreciable) {
       depreciacionAcumulada = valorDepreciable;
     }
 
     depreciacionAcumulada = Number(depreciacionAcumulada.toFixed(2));
-
-    // Valor en libros
-    const valorEnLibros = Number((costoAdquisicion - depreciacionAcumulada).toFixed(2));
+    const valorEnLibros = Number(
+      (costoAdquisicion - depreciacionAcumulada).toFixed(2),
+    );
 
     return {
       depreciacionAnual,
       depreciacionMensual,
       depreciacionAcumulada,
       valorEnLibros,
+      fechaUltimaDepreciacion: hoy,
     };
   }
 }

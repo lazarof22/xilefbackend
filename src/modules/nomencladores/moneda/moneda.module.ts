@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { MonedaService } from './moneda.service';
 import { MonedaController } from './moneda.controller';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Moneda, MonedaSchema } from './schema/moneda.schem';
+import { Moneda, MonedaSchema } from './schema/moneda.schema';
 
 @Module({
   controllers: [MonedaController],

@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { CreateMonedaDto } from './dto/create-moneda.dto';
 import { UpdateMonedaDto } from './dto/update-moneda.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Moneda } from './schema/moneda.schem';
+import { Moneda } from './schema/moneda.schema';
 import { Model } from 'mongoose';
 
 @Injectable()
