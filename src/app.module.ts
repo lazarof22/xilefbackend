@@ -33,6 +33,7 @@ import { ReporteCajaModule } from './modules/venta/reporte_caja/reporte_caja.mod
 import { ConteoFisicoModule } from './modules/contabilidad/conteo_fisico/conteo_fisico.module';
 import { ContenedorModule } from './modules/inventario/contenedor/contenedor.module';
 import { AlmacenModule } from './modules/inventario/almacen/almacen.module';
+import { TransferenciaModule } from './modules/inventario/transferencia/transferencia.module';
 
 
 @Module({
@@ -75,6 +76,7 @@ import { AlmacenModule } from './modules/inventario/almacen/almacen.module';
     VentaModule,
     MovimientoModule,
     TasaDepreciacionModule,
+    TransferenciaModule,
     ReportePlusModule,
     ReporteCajaModule,
     ConteoFisicoModule
