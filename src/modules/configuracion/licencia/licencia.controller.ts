@@ -13,7 +13,7 @@ import {
   Query,
   Ip,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { LicenciaService } from './licencia.service';
 import { ActivarLicenciaDto } from './dto/activar-licencia.dto';
@@ -135,6 +135,7 @@ export class LicenciaController {
   @Post('revocar/:empresaId')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Revocar una licencia (solo admin)' })
+  @ApiParam({ name: 'empresaId', description: 'ID de la empresa' })
   @ApiResponse({ status: 200, description: 'Licencia revocada exitosamente' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -159,6 +160,7 @@ export class LicenciaController {
   @Get(':empresaId')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Obtener una licencia por empresa_id (solo admin)' })
+  @ApiParam({ name: 'empresaId', description: 'ID de la empresa' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('administrador')

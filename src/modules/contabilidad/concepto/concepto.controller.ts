@@ -2,9 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { ConceptoService } from './concepto.service';
 import { CreateConceptoDto } from './dto/create-concepto.dto';
 import { UpdateConceptoDto } from './dto/update-concepto.dto';
-import { ApiOperation } from '@nestjs/swagger/dist/decorators/api-operation.decorator';
-import { ApiResponse } from '@nestjs/swagger/dist/decorators/api-response.decorator';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 
 @ApiTags('Concepto')
 @Controller('concepto')
@@ -20,7 +18,7 @@ export class ConceptoController {
   }
 
   @ApiOperation({ summary: 'Obtener todos los conceptos' })
-  @ApiResponse({ status: 201, description: 'Conceptos obtenidos con exito' })
+  @ApiResponse({ status: 200, description: 'Conceptos obtenidos con exito' })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @Get()
   findAll() {
@@ -28,24 +26,30 @@ export class ConceptoController {
   }
 
   @ApiOperation({ summary: 'Obtener un concepto' })
-  @ApiResponse({ status: 201, description: 'Concepto obtenido con exito' })
+  @ApiParam({ name: 'id', description: 'ID del concepto' })
+  @ApiResponse({ status: 200, description: 'Concepto obtenido con exito' })
   @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 404, description: 'Concepto no encontrado' })
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.conceptoService.findOne(id);
   }
 
   @ApiOperation({ summary: 'Modificar un concepto' })
+  @ApiParam({ name: 'id', description: 'ID del concepto' })
   @ApiResponse({ status: 201, description: 'Concepto modificado con exito' })
   @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 404, description: 'Concepto no encontrado' })
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateConceptoDto: UpdateConceptoDto) {
     return this.conceptoService.update(id, updateConceptoDto);
   }
 
   @ApiOperation({ summary: 'Eliminar un concepto' })
+  @ApiParam({ name: 'id', description: 'ID del concepto' })
   @ApiResponse({ status: 201, description: 'Concepto eliminado con exito' })
   @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 404, description: 'Concepto no encontrado' })
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.conceptoService.remove(id);

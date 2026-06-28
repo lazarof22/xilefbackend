@@ -33,11 +33,13 @@ export class CajaController {
 
   @Get('resumen')
   @ApiOperation({ summary: 'Resumen por concepto' })
+  @ApiResponse({ status: 200, description: 'Resumen por concepto' })
   @ApiQuery({ name: 'desde', required: false }) @ApiQuery({ name: 'hasta', required: false })
   getResumen(@Query('desde') desde?: string, @Query('hasta') hasta?: string) { return this.cajaService.getResumenPorConcepto(desde, hasta); }
 
   @Get('arqueos')
   @ApiOperation({ summary: 'Historial de arqueos' })
+  @ApiResponse({ status: 200, description: 'Historial de arqueos' })
   getArqueos() { return this.cajaService.getArqueos(); }
 
   @Post('arqueo')
@@ -47,11 +49,11 @@ export class CajaController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener movimiento por ID' })
-  @ApiParam({ name: 'id' }) @ApiResponse({ status: 404, description: 'No encontrado' })
+  @ApiParam({ name: 'id' }) @ApiResponse({ status: 200, description: 'Movimiento encontrado' }) @ApiResponse({ status: 404, description: 'No encontrado' })
   findOne(@Param('id') id: string) { return this.cajaService.findOne(id); }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar movimiento' })
-  @ApiParam({ name: 'id' }) @ApiResponse({ status: 404, description: 'No encontrado' })
+  @ApiParam({ name: 'id' }) @ApiResponse({ status: 200, description: 'Movimiento eliminado' }) @ApiResponse({ status: 404, description: 'No encontrado' })
   remove(@Param('id') id: string) { return this.cajaService.remove(id); }
 }

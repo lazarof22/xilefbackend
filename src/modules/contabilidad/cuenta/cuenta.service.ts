@@ -12,15 +12,15 @@ export class CuentaService {
     return `This action returns all cuenta`;
   }
 
-  findOne(id: number) {
+  findOne(id: string) {
     return `This action returns a #${id} cuenta`;
   }
 
-  update(id: number, updateCuentaDto: UpdateCuentaDto) {
+  update(id: string, updateCuentaDto: UpdateCuentaDto) {
     return `This action updates a #${id} cuenta`;
   }
 
-  remove(id: number) {
+  remove(id: string) {
     return `This action removes a #${id} cuenta`;
   }
 }
