@@ -1,5 +1,6 @@
 import { Type } from "class-transformer";
-import { IsEnum, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Min, ValidateNested } from "class-validator";
+import { IsEnum, IsIn, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Min, ValidateNested } from "class-validator";
+import { TipoCliente } from "../schema/pago_efectivo.schema";
 
 export class DesgloseBilletesDto {
 
@@ -55,7 +56,23 @@ export class DesgloseBilletesDto {
 export class PagoBaseDto {
 
     @IsEnum(['efectivo', 'transferencia', 'credito'])
-    metodoPago!: string;
+    @IsOptional()
+    metodoPago?: string;
+}
+
+
+export class DatosClienteDescuentoDto {
+    @IsString()
+    @IsNotEmpty()
+    nombre!: string;
+
+    @IsString()
+    @IsNotEmpty()
+    ci!: string;
+
+    @IsString()
+    @IsNotEmpty()
+    telefono!: string;
 }
 
 export class CreatePagoEfectivoDto extends PagoBaseDto {
@@ -65,7 +82,11 @@ export class CreatePagoEfectivoDto extends PagoBaseDto {
 
     @IsNumber()
     @IsPositive()
-    monto_pagar!: number;
+    monto_pagar_CUP!: number;
+
+    @IsNumber()
+    @IsPositive()
+    monto_pagar_alCambio!: number;
 
     @IsNumber()
     @IsPositive()
@@ -78,21 +99,28 @@ export class CreatePagoEfectivoDto extends PagoBaseDto {
     @IsMongoId()
     @IsString()
     moneda!: string;
-    
+
+    @IsEnum(TipoCliente)
+    cliente!: TipoCliente; // cliente-estandar | cliente-por-descuento | cliente-cuenta-casa
+
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => DatosClienteDescuentoDto)
+    datosClienteDescuento?: DatosClienteDescuentoDto; // Solo si cliente = cliente-por-descuento
 }
 
 export class CreatePagoTransferenciaDto extends PagoBaseDto {
     @IsString()
     @IsNotEmpty()
-    ciCliente!:string;
+    ciCliente!: string;
 
     @IsString()
     @IsNotEmpty()
-    nombreCliente!:string;
+    nombreCliente!: string;
 
     @IsString()
     @IsNotEmpty()
-    referenciaPago!:string;
+    referenciaPago!: string;
 
     @IsNumber()
     @IsPositive()
@@ -118,5 +146,5 @@ export class CreatePagoCreditoDto extends PagoBaseDto {
 }
 
 export class CreatePagoDto extends PagoBaseDto {
-   
+
 }
