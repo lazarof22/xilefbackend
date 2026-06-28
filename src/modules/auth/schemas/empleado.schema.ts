@@ -7,7 +7,9 @@ export enum UsuarioRol {
   ADMIN = 'administrador',
   EMPLEADO = 'empleado',
   JEFE = 'jefe',
-  FACTURADOR = 'facturador'
+  FACTURADOR = 'facturador',
+  CAJERO = 'cajero'
+
 }
 
 @Schema()
