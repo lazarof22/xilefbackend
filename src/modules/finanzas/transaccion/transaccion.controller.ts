@@ -36,6 +36,14 @@ export class TransaccionController {
     return this.transaccionService.getResumen(desde, hasta);
   }
 
+  @Get('flujo-efectivo')
+  @ApiOperation({ summary: 'Flujo de efectivo (NCC 2 - Estado de Flujo de Efectivo)' })
+  @ApiResponse({ status: 200, description: 'Flujo de efectivo del período' })
+  @ApiQuery({ name: 'desde', required: true }) @ApiQuery({ name: 'hasta', required: true })
+  getFlujoEfectivo(@Query('desde') desde: string, @Query('hasta') hasta: string) {
+    return this.transaccionService.getFlujoEfectivo(desde, hasta);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obtener transacción por ID' })
   @ApiParam({ name: 'id', description: 'ID de la transacción' })

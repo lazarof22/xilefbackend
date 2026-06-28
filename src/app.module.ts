@@ -37,6 +37,10 @@ import { CuentaCobrarModule } from './modules/finanzas/cuenta-cobrar/cuenta-cobr
 import { CuentaPagarModule } from './modules/finanzas/cuenta-pagar/cuenta-pagar.module';
 import { TransaccionModule } from './modules/finanzas/transaccion/transaccion.module';
 import { ConciliacionModule } from './modules/finanzas/conciliacion/conciliacion.module';
+import { CajaModule } from './modules/finanzas/caja/caja.module';
+import { CombustibleModule } from './modules/finanzas/combustible/combustible.module';
+import { CreditoModule } from './modules/finanzas/credito/credito.module';
+import { ChequeModule } from './modules/finanzas/cheque/cheque.module';
 
 
 @Module({
@@ -88,6 +92,10 @@ import { ConciliacionModule } from './modules/finanzas/conciliacion/conciliacion
     CuentaPagarModule,
     TransaccionModule,
     ConciliacionModule,
+    CajaModule,
+    CombustibleModule,
+    CreditoModule,
+    ChequeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

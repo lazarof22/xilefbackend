@@ -77,4 +77,30 @@ export class TransaccionService {
       cantidadEgresos: egresos.length > 0 ? egresos[0].cantidad : 0,
     };
   }
+
+  async getFlujoEfectivo(desde: string, hasta: string): Promise<any> {
+    const filtro = { fecha: { $gte: new Date(desde), $lte: new Date(hasta) } };
+    const transaction = await this.transaccionModel.aggregate([
+      { $match: filtro },
+      {
+        $group: {
+          _id: '$tipo',
+          total: { $sum: '$monto' },
+          cantidad: { $sum: 1 },
+        },
+      },
+    ]).exec();
+
+    const ingresos = transaction.find(t => t._id === 'ingreso');
+    const egresos = transaction.find(t => t._id === 'egreso');
+
+    return {
+      periodo: { desde, hasta },
+      flujoOperativo: {
+        ingresos: ingresos?.total ?? 0,
+        egresos: egresos?.total ?? 0,
+        neto: (ingresos?.total ?? 0) - (egresos?.total ?? 0),
+      },
+    };
+  }
 }

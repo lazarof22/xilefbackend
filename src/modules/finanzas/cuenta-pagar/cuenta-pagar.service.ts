@@ -50,6 +50,29 @@ export class CuentaPagarService {
     }).populate('proveedor').populate('concepto').sort({ fechaVencimiento: 1 }).exec();
   }
 
+  async getEnvejecimientoPorProveedor(proveedorId: string): Promise<EnvejecimientoCxP[]> {
+    const hoy = new Date();
+    const rangos = [
+      { min: 0, max: 30, label: '0-30 días' },
+      { min: 31, max: 60, label: '31-60 días' },
+      { min: 61, max: 90, label: '61-90 días' },
+      { min: 91, max: 999999, label: 'Más de 90 días' },
+    ];
+    const todas = await this.cxpModel.find({
+      proveedor: proveedorId,
+      estado: { $in: [EstadoCxP.PENDIENTE, EstadoCxP.PARCIAL, EstadoCxP.VENCIDA] },
+    }).exec();
+
+    return rangos.map(rango => {
+      const filtradas = todas.filter(c => {
+        const diff = Math.floor((hoy.getTime() - c.fechaVencimiento.getTime()) / (1000 * 60 * 60 * 24));
+        return diff >= rango.min && diff <= rango.max;
+      });
+      const montoTotal = filtradas.reduce((sum, c) => sum + c.saldoPendiente, 0);
+      return { rango: rango.label, cantidad: filtradas.length, montoTotal };
+    });
+  }
+
   async getEnvejecimiento(): Promise<EnvejecimientoCxP[]> {
     const hoy = new Date();
     const rangos = [

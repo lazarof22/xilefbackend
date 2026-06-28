@@ -45,6 +45,14 @@ export class CuentaCobrarController {
     return this.cxcService.getResumen();
   }
 
+  @Get('envejecimiento/cliente/:clienteId')
+  @ApiOperation({ summary: 'Envejecimiento por cliente' })
+  @ApiParam({ name: 'clienteId', description: 'ID del cliente' })
+  @ApiResponse({ status: 200, description: 'Aging del cliente' })
+  getEnvejecimientoPorCliente(@Param('clienteId') clienteId: string) {
+    return this.cxcService.getEnvejecimientoPorCliente(clienteId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obtener cuenta por cobrar por ID' })
   @ApiParam({ name: 'id', description: 'ID de la cuenta por cobrar' })
