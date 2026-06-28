@@ -133,8 +133,14 @@ export class ImportExportService {
     const collections = await this.connection.db!.listCollections().toArray();
     const result: Record<string, unknown[]> = {};
 
+    const excludeCollections = new Set([
+      'system.views', 'system.users', 'system.keys',
+      'system.buckets', 'system.profile', 'system.js',
+    ]);
+
     for (const col of collections) {
       const name = col.name;
+      if (name.startsWith('system.') || excludeCollections.has(name)) continue;
       const docs = await this.connection.db!.collection(name).find().toArray();
       result[name] = docs.map((doc) => {
         const { _id, __v, ...rest } = doc as Record<string, unknown>;

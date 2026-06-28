@@ -37,4 +37,4 @@ export class Banco {
   activo!: boolean;
 }
 
-export const Bancochema = SchemaFactory.createForClass(Banco);
+export const BancoSchema = SchemaFactory.createForClass(Banco);

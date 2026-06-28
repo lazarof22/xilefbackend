@@ -168,16 +168,6 @@ export class LicenciaService {
     const empresaId = dto.empresa_id ?? licencia.empresa_id;
     const empresaNombre = dto.empresa_nombre ?? licencia.empresa_nombre;
 
-    await this.auditService.logAccion({
-      licencia_id: licencia._id,
-      accion: 'activacion',
-      empresa_id: empresaId,
-      exitoso: false,
-      error: 'Intento de activación',
-      ip_origen: ip,
-      user_agent: userAgent,
-    });
-
     if (licencia.revocada) {
       throw new BadRequestException(
         'Licencia no encontrada o inválida',

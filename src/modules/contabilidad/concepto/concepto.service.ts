@@ -16,7 +16,7 @@ export class ConceptoService {
   ): Promise<Concepto> {
     const existC = await this.conceptoModel.findOne({
       nombreConcepto: createConceptoDto.nombreConcepto,
-    });
+    }).exec();
 
     if (existC) {
       throw new BadRequestException('Ya existe el concepto');
