@@ -29,7 +29,7 @@ import { EmpresaDatosModule } from './modules/configuracion/empresa-datos/empres
 import { UsuariosModule } from './modules/configuracion/usuarios/usuarios.module';
 import { ImportExportModule } from './modules/configuracion/import-export/import-export.module';
 import { ReportePlusModule } from './modules/venta/reporte_plus/reporte_plus.module';
-import { ReporteCajaModule } from './modules/venta/reporte_caja/reporte_caja.module';
+import { CuadreCajaModule } from './modules/inventario/cuadre_caja/cuadre_caja.module';
 import { ConteoFisicoModule } from './modules/contabilidad/conteo_fisico/conteo_fisico.module';
 import { ContenedorModule } from './modules/inventario/contenedor/contenedor.module';
 import { AlmacenModule } from './modules/inventario/almacen/almacen.module';
@@ -97,7 +97,6 @@ import { TasaCambioModule } from './modules/nomencladores/tasa-cambio/tasa-cambi
     TasaDepreciacionModule,
     TransferenciaModule,
     ReportePlusModule,
-    ReporteCajaModule,
     ConteoFisicoModule,
     BancoModule,
     CuentaCobrarModule,
@@ -105,6 +104,7 @@ import { TasaCambioModule } from './modules/nomencladores/tasa-cambio/tasa-cambi
     TransaccionModule,
     ConciliacionModule,
     CajaModule,
+    CuadreCajaModule,
     CombustibleModule,
     CreditoModule,
     ChequeModule,

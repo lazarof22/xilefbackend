@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
-export type ReporteCajaDocument = HydratedDocument<ReporteCaja>;
+export type CuadreCajaDocument = HydratedDocument<CuadreCaja>;
 
 @Schema()
 export class DesgloseBilletes {
@@ -44,7 +44,7 @@ export class DesgloseBilletes {
 }
 
 @Schema({ timestamps: true })
-export class ReporteCaja {
+export class CuadreCaja {
 
     @Prop({ type: Date, default: Date.now })
     fecha!: Date;
@@ -54,6 +54,15 @@ export class ReporteCaja {
 
     @Prop({ required: true, min: 0 })
     cuentas_por_cobrar!: number;
+
+    @Prop({ required: true, min: 0 })
+    cxc_cobrado!: number;
+
+    @Prop({ required: true, min: 0 })
+    total_ventas_dia!: number;
+
+    @Prop({ required: true, min: 0 })
+    total_extracciones_dia!: number;
 
     @Prop({ required: true, type: DesgloseBilletes })
     desglose_billetes!: DesgloseBilletes;
@@ -67,11 +76,17 @@ export class ReporteCaja {
     @Prop({ required: true, min: 0 })
     descuentos!: number;
 
-    @Prop({})
+    @Prop({ required: true })
     otros_motivos!: string;
 
     @Prop({ required: true, min: 0 })
-    monto!: number;
+    otros_motivos_monto!: number;
+
+    @Prop({ required: true, enum: ['ingreso', 'egreso'] })
+    otros_motivos_tipo!: string;
+
+    @Prop({ required: true, min: 0 })
+    total_efectivo!: number;
 }
 
-export const ReporteCajaSchema = SchemaFactory.createForClass(ReporteCaja);
+export const CuadreCajaSchema = SchemaFactory.createForClass(CuadreCaja);

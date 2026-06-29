@@ -21,7 +21,7 @@ class ItemVenta {
 
 
 
-@Schema()
+@Schema({ timestamps: true })
 export class Venta {
 
     @Prop({ required: true })
