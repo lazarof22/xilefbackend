@@ -16,4 +16,5 @@ export class TarjetaCombustible {
   estado!: EstadoTarjeta;
 }
 
-export const TarjetaCombustibleSchema = SchemaFactory.createForClass(TarjetaCombustible);
+export const TarjetaCombustibleSchema =
+  SchemaFactory.createForClass(TarjetaCombustible);

@@ -48,10 +48,23 @@ describe('ConciliacionService', () => {
 
     mockSave.mockResolvedValue(mockDocument);
 
+    const mockExtractoModel = {
+      find: jest.fn(() => mockQueryBuilder),
+      findOne: jest.fn(() => mockQueryBuilder),
+      create: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ConciliacionService,
-        { provide: getModelToken(Conciliacion.name), useValue: mockConciliacionModel },
+        {
+          provide: getModelToken(Conciliacion.name),
+          useValue: mockConciliacionModel,
+        },
+        {
+          provide: getModelToken('ExtractoMovimiento'),
+          useValue: mockExtractoModel,
+        },
       ],
     }).compile();
 
@@ -82,7 +95,9 @@ describe('ConciliacionService', () => {
 
       const result = await service.create(createDto);
 
-      expect(mockConciliacionModel.findOne).toHaveBeenCalledWith({ codigo: 'CON-002' });
+      expect(mockConciliacionModel.findOne).toHaveBeenCalledWith({
+        codigo: 'CON-002',
+      });
       expect(mockConciliacionModel).toHaveBeenCalledWith(
         expect.objectContaining({
           codigo: 'CON-002',
@@ -151,7 +166,9 @@ describe('ConciliacionService', () => {
 
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
 
-      await expect(service.create(createDto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(createDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -171,16 +188,22 @@ describe('ConciliacionService', () => {
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
       const result = await service.findOne(mockDocument._id.toHexString());
       expect(result).toEqual(mockDocument);
-      expect(mockConciliacionModel.findById).toHaveBeenCalledWith(mockDocument._id.toHexString());
+      expect(mockConciliacionModel.findById).toHaveBeenCalledWith(
+        mockDocument._id.toHexString(),
+      );
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('invalid-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when conciliacion does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.findOne(new Types.ObjectId().toHexString())).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne(new Types.ObjectId().toHexString()),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -189,7 +212,10 @@ describe('ConciliacionService', () => {
       const updateDto = { saldoBanco: 60000, saldoLibros: 55000 };
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
 
-      const result = await service.update(mockDocument._id.toHexString(), updateDto);
+      const result = await service.update(
+        mockDocument._id.toHexString(),
+        updateDto,
+      );
 
       expect(mockConciliacionModel.findByIdAndUpdate).toHaveBeenCalledWith(
         mockDocument._id.toHexString(),
@@ -200,9 +226,15 @@ describe('ConciliacionService', () => {
     });
 
     it('should update and recalculate when only saldoBanco provided', async () => {
-      const existingDoc = { ...mockDocument, saldoLibros: 50000, save: mockSave };
+      const existingDoc = {
+        ...mockDocument,
+        saldoLibros: 50000,
+        save: mockSave,
+      };
       mockConciliacionModel.findById = jest.fn(() => mockQueryBuilder);
-      mockQueryBuilder.exec.mockResolvedValueOnce(existingDoc).mockResolvedValueOnce(mockDocument);
+      mockQueryBuilder.exec
+        .mockResolvedValueOnce(existingDoc)
+        .mockResolvedValueOnce(mockDocument);
 
       const updateDto = { saldoBanco: 55000 };
 
@@ -216,9 +248,15 @@ describe('ConciliacionService', () => {
     });
 
     it('should update and recalculate when only saldoLibros provided', async () => {
-      const existingDoc = { ...mockDocument, saldoBanco: 50000, save: mockSave };
+      const existingDoc = {
+        ...mockDocument,
+        saldoBanco: 50000,
+        save: mockSave,
+      };
       mockConciliacionModel.findById = jest.fn(() => mockQueryBuilder);
-      mockQueryBuilder.exec.mockResolvedValueOnce(existingDoc).mockResolvedValueOnce(mockDocument);
+      mockQueryBuilder.exec
+        .mockResolvedValueOnce(existingDoc)
+        .mockResolvedValueOnce(mockDocument);
 
       const updateDto = { saldoLibros: 45000 };
 
@@ -245,12 +283,18 @@ describe('ConciliacionService', () => {
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.update('invalid-id', {})).rejects.toThrow(NotFoundException);
+      await expect(service.update('invalid-id', {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when conciliacion to update does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.update(new Types.ObjectId().toHexString(), { observaciones: 'test' })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update(new Types.ObjectId().toHexString(), {
+          observaciones: 'test',
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -259,22 +303,35 @@ describe('ConciliacionService', () => {
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
       const result = await service.remove(mockDocument._id.toHexString());
       expect(result).toEqual({ deleted: true });
-      expect(mockConciliacionModel.findByIdAndDelete).toHaveBeenCalledWith(mockDocument._id.toHexString());
+      expect(mockConciliacionModel.findByIdAndDelete).toHaveBeenCalledWith(
+        mockDocument._id.toHexString(),
+      );
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.remove('invalid-id')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('invalid-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when conciliacion to remove does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.remove(new Types.ObjectId().toHexString())).rejects.toThrow(NotFoundException);
+      await expect(
+        service.remove(new Types.ObjectId().toHexString()),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('procesar', () => {
     it('should set estado to CONCILIADA when diferencia is 0', async () => {
-      const doc = { ...mockDocument, saldoBanco: 50000, saldoLibros: 50000, diferencia: 0, estado: EstadoConciliacion.PENDIENTE, save: mockSave };
+      const doc = {
+        ...mockDocument,
+        saldoBanco: 50000,
+        saldoLibros: 50000,
+        diferencia: 0,
+        estado: EstadoConciliacion.PENDIENTE,
+        save: mockSave,
+      };
       mockSave.mockResolvedValue(doc);
       mockQueryBuilder.exec.mockResolvedValue(doc);
 
@@ -287,7 +344,14 @@ describe('ConciliacionService', () => {
     });
 
     it('should set estado to DIFERENCIA when diferencia is not 0', async () => {
-      const doc = { ...mockDocument, saldoBanco: 50000, saldoLibros: 48000, diferencia: 2000, estado: EstadoConciliacion.PENDIENTE, save: mockSave };
+      const doc = {
+        ...mockDocument,
+        saldoBanco: 50000,
+        saldoLibros: 48000,
+        diferencia: 2000,
+        estado: EstadoConciliacion.PENDIENTE,
+        save: mockSave,
+      };
       mockSave.mockResolvedValue(doc);
       mockQueryBuilder.exec.mockResolvedValue(doc);
 
@@ -300,7 +364,14 @@ describe('ConciliacionService', () => {
     });
 
     it('should recalculate diferencia before updating estado', async () => {
-      const doc = { ...mockDocument, saldoBanco: 50000, saldoLibros: 50000, diferencia: 9999, estado: EstadoConciliacion.PENDIENTE, save: mockSave };
+      const doc = {
+        ...mockDocument,
+        saldoBanco: 50000,
+        saldoLibros: 50000,
+        diferencia: 9999,
+        estado: EstadoConciliacion.PENDIENTE,
+        save: mockSave,
+      };
       mockSave.mockResolvedValue(doc);
       mockQueryBuilder.exec.mockResolvedValue(doc);
 
@@ -311,12 +382,16 @@ describe('ConciliacionService', () => {
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.procesar('invalid-id')).rejects.toThrow(NotFoundException);
+      await expect(service.procesar('invalid-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when conciliacion does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.procesar(new Types.ObjectId().toHexString())).rejects.toThrow(NotFoundException);
+      await expect(
+        service.procesar(new Types.ObjectId().toHexString()),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -325,7 +400,9 @@ describe('ConciliacionService', () => {
       mockQueryBuilder.exec.mockResolvedValue([mockDocument]);
       const result = await service.getPendientes();
       expect(mockConciliacionModel.find).toHaveBeenCalledWith({
-        estado: { $in: [EstadoConciliacion.PENDIENTE, EstadoConciliacion.EN_PROCESO] },
+        estado: {
+          $in: [EstadoConciliacion.PENDIENTE, EstadoConciliacion.EN_PROCESO],
+        },
       });
       expect(result).toEqual([mockDocument]);
     });

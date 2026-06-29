@@ -51,7 +51,10 @@ describe('TransaccionService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TransaccionService,
-        { provide: getModelToken(Transaccion.name), useValue: mockTransaccionModel },
+        {
+          provide: getModelToken(Transaccion.name),
+          useValue: mockTransaccionModel,
+        },
       ],
     }).compile();
 
@@ -83,7 +86,9 @@ describe('TransaccionService', () => {
 
       const result = await service.create(createDto);
 
-      expect(mockTransaccionModel.findOne).toHaveBeenCalledWith({ codigo: 'TRX-002' });
+      expect(mockTransaccionModel.findOne).toHaveBeenCalledWith({
+        codigo: 'TRX-002',
+      });
       expect(mockTransaccionModel).toHaveBeenCalledWith(createDto);
       expect(mockSave).toHaveBeenCalled();
       expect(result).toEqual(mockDocument);
@@ -102,7 +107,9 @@ describe('TransaccionService', () => {
 
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
 
-      await expect(service.create(createDto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(createDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -126,16 +133,22 @@ describe('TransaccionService', () => {
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
       const result = await service.findOne(mockDocument._id.toHexString());
       expect(result).toEqual(mockDocument);
-      expect(mockTransaccionModel.findById).toHaveBeenCalledWith(mockDocument._id.toHexString());
+      expect(mockTransaccionModel.findById).toHaveBeenCalledWith(
+        mockDocument._id.toHexString(),
+      );
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('invalid-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when transaccion does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.findOne(new Types.ObjectId().toHexString())).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne(new Types.ObjectId().toHexString()),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -143,7 +156,10 @@ describe('TransaccionService', () => {
     it('should update a transaccion', async () => {
       const updateDto = { descripcion: 'Updated description' };
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
-      const result = await service.update(mockDocument._id.toHexString(), updateDto);
+      const result = await service.update(
+        mockDocument._id.toHexString(),
+        updateDto,
+      );
       expect(mockTransaccionModel.findByIdAndUpdate).toHaveBeenCalledWith(
         mockDocument._id.toHexString(),
         updateDto,
@@ -153,12 +169,18 @@ describe('TransaccionService', () => {
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.update('invalid-id', {})).rejects.toThrow(NotFoundException);
+      await expect(service.update('invalid-id', {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when transaccion to update does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.update(new Types.ObjectId().toHexString(), { descripcion: 'test' })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update(new Types.ObjectId().toHexString(), {
+          descripcion: 'test',
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -167,16 +189,22 @@ describe('TransaccionService', () => {
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
       const result = await service.remove(mockDocument._id.toHexString());
       expect(result).toEqual({ deleted: true });
-      expect(mockTransaccionModel.findByIdAndDelete).toHaveBeenCalledWith(mockDocument._id.toHexString());
+      expect(mockTransaccionModel.findByIdAndDelete).toHaveBeenCalledWith(
+        mockDocument._id.toHexString(),
+      );
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.remove('invalid-id')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('invalid-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when transaccion to remove does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.remove(new Types.ObjectId().toHexString())).rejects.toThrow(NotFoundException);
+      await expect(
+        service.remove(new Types.ObjectId().toHexString()),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -236,9 +264,7 @@ describe('TransaccionService', () => {
     });
 
     it('should return zero totals when aggregates are empty', async () => {
-      mockQueryBuilder.exec
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
+      mockQueryBuilder.exec.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       const result = await service.getResumen();
 

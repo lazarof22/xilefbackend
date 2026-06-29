@@ -1,11 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 import { EstadoArqueo } from '../types/caja.types';
 
 export type ArqueoCajaDocument = HydratedDocument<ArqueoCaja>;
 
 @Schema({ timestamps: true })
 export class ArqueoCaja {
+  @Prop({ type: Types.ObjectId, ref: 'CuentaCaja', index: true })
+  cajaId?: Types.ObjectId;
+
   @Prop({ required: true })
   fecha!: Date;
 

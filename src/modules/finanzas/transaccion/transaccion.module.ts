@@ -7,7 +7,11 @@ import { Transaccion, TransaccionSchema } from './schema/transaccion.schema';
 @Module({
   controllers: [TransaccionController],
   providers: [TransaccionService],
-  imports: [MongooseModule.forFeature([{ name: Transaccion.name, schema: TransaccionSchema }])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Transaccion.name, schema: TransaccionSchema },
+    ]),
+  ],
   exports: [MongooseModule],
 })
 export class TransaccionModule {}

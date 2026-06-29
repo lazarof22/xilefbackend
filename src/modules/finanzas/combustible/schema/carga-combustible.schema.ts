@@ -8,7 +8,12 @@ export class CargaCombustible {
   @Prop({ required: true, unique: true })
   codigo!: string;
 
-  @Prop({ required: true, type: Types.ObjectId, ref: 'TarjetaCombustible', index: true })
+  @Prop({
+    required: true,
+    type: Types.ObjectId,
+    ref: 'TarjetaCombustible',
+    index: true,
+  })
   tarjeta!: Types.ObjectId;
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'Vehiculo', index: true })
@@ -33,4 +38,5 @@ export class CargaCombustible {
   kilometraje!: number;
 }
 
-export const CargaCombustibleSchema = SchemaFactory.createForClass(CargaCombustible);
+export const CargaCombustibleSchema =
+  SchemaFactory.createForClass(CargaCombustible);

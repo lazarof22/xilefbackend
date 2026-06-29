@@ -8,7 +8,9 @@ describe('EnzonaController', () => {
 
   beforeEach(async () => {
     mockService = {
-      procesarWebhook: jest.fn().mockResolvedValue({ recibido: true, mensaje: 'ok' }),
+      procesarWebhook: jest
+        .fn()
+        .mockResolvedValue({ recibido: true, mensaje: 'ok' }),
     };
 
     const module: TestingModule = await Test.createTestingModule({

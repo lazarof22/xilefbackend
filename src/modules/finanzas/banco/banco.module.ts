@@ -7,7 +7,9 @@ import { Banco, BancoSchema } from './schema/banco.schema';
 @Module({
   controllers: [BancoController],
   providers: [BancoService],
-  imports: [MongooseModule.forFeature([{ name: Banco.name, schema: BancoSchema }])],
+  imports: [
+    MongooseModule.forFeature([{ name: Banco.name, schema: BancoSchema }]),
+  ],
   exports: [MongooseModule],
 })
 export class BancoModule {}

@@ -81,7 +81,9 @@ describe('BancoService', () => {
 
       const result = await service.create(createDto);
 
-      expect(mockBancoModel.findOne).toHaveBeenCalledWith({ codigoBanco: 'BAN-002' });
+      expect(mockBancoModel.findOne).toHaveBeenCalledWith({
+        codigoBanco: 'BAN-002',
+      });
       expect(mockBancoModel).toHaveBeenCalledWith(
         expect.objectContaining({
           codigoBanco: 'BAN-002',
@@ -131,7 +133,9 @@ describe('BancoService', () => {
 
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
 
-      await expect(service.create(createDto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(createDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -151,17 +155,23 @@ describe('BancoService', () => {
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
       const result = await service.findOne(mockDocument._id.toHexString());
       expect(result).toEqual(mockDocument);
-      expect(mockBancoModel.findById).toHaveBeenCalledWith(mockDocument._id.toHexString());
+      expect(mockBancoModel.findById).toHaveBeenCalledWith(
+        mockDocument._id.toHexString(),
+      );
       expect(mockQueryBuilder.populate).toHaveBeenCalledWith('moneda');
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('invalid-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when banco does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.findOne(new Types.ObjectId().toHexString())).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne(new Types.ObjectId().toHexString()),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -169,7 +179,10 @@ describe('BancoService', () => {
     it('should update a banco', async () => {
       const updateDto = { nombreBanco: 'Updated Bank' };
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
-      const result = await service.update(mockDocument._id.toHexString(), updateDto);
+      const result = await service.update(
+        mockDocument._id.toHexString(),
+        updateDto,
+      );
       expect(mockBancoModel.findByIdAndUpdate).toHaveBeenCalledWith(
         mockDocument._id.toHexString(),
         updateDto,
@@ -179,12 +192,18 @@ describe('BancoService', () => {
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.update('invalid-id', {})).rejects.toThrow(NotFoundException);
+      await expect(service.update('invalid-id', {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when banco to update does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.update(new Types.ObjectId().toHexString(), { nombreBanco: 'test' })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update(new Types.ObjectId().toHexString(), {
+          nombreBanco: 'test',
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -193,16 +212,22 @@ describe('BancoService', () => {
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
       const result = await service.remove(mockDocument._id.toHexString());
       expect(result).toEqual({ deleted: true });
-      expect(mockBancoModel.findByIdAndDelete).toHaveBeenCalledWith(mockDocument._id.toHexString());
+      expect(mockBancoModel.findByIdAndDelete).toHaveBeenCalledWith(
+        mockDocument._id.toHexString(),
+      );
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.remove('invalid-id')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('invalid-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when banco to remove does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.remove(new Types.ObjectId().toHexString())).rejects.toThrow(NotFoundException);
+      await expect(
+        service.remove(new Types.ObjectId().toHexString()),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -253,7 +278,9 @@ describe('BancoService', () => {
 
     it('should throw NotFoundException when cuenta does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.actualizarSaldo(new Types.ObjectId().toHexString(), 100)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.actualizarSaldo(new Types.ObjectId().toHexString(), 100),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

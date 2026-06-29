@@ -94,7 +94,13 @@ describe('TransaccionController', () => {
     it('should call service.getResumen with optional query params', async () => {
       const desde = '2024-01-01';
       const hasta = '2024-01-31';
-      const resumen = { totalIngresos: 10000, totalEgresos: 4000, saldoNeto: 6000, cantidadIngresos: 5, cantidadEgresos: 3 };
+      const resumen = {
+        totalIngresos: 10000,
+        totalEgresos: 4000,
+        saldoNeto: 6000,
+        cantidadIngresos: 5,
+        cantidadEgresos: 3,
+      };
       mockService.getResumen.mockResolvedValue(resumen);
 
       const result = await controller.getResumen(desde, hasta);
@@ -104,7 +110,13 @@ describe('TransaccionController', () => {
     });
 
     it('should call service.getResumen without params', async () => {
-      const resumen = { totalIngresos: 5000, totalEgresos: 2000, saldoNeto: 3000, cantidadIngresos: 2, cantidadEgresos: 1 };
+      const resumen = {
+        totalIngresos: 5000,
+        totalEgresos: 2000,
+        saldoNeto: 3000,
+        cantidadIngresos: 2,
+        cantidadEgresos: 1,
+      };
       mockService.getResumen.mockResolvedValue(resumen);
 
       const result = await controller.getResumen();

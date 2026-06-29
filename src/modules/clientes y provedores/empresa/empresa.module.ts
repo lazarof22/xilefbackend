@@ -7,10 +7,11 @@ import { Empresa, EmpresaSchema } from './schema/empresa.schema';
 @Module({
   controllers: [EmpresaController],
   providers: [EmpresaService],
-  imports: [
-      MongooseModule.forFeature([
-        { name: Empresa.name, schema: EmpresaSchema },
-      ]),
-    ],
+    imports: [
+        MongooseModule.forFeature([
+          { name: Empresa.name, schema: EmpresaSchema },
+        ]),
+      ],
+  exports: [MongooseModule],
 })
 export class EmpresaModule {}

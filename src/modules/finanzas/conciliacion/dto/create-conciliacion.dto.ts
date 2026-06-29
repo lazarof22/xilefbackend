@@ -1,29 +1,40 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsMongoId, IsEnum, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsMongoId,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EstadoConciliacion } from '../types/conciliacion.types';
 
 export class CreateConciliacionDto {
   @ApiProperty({ description: 'Código único de conciliación' })
-  @IsString() @IsNotEmpty()
+  @IsString()
+  @IsNotEmpty()
   codigo!: string;
 
   @ApiProperty({ description: 'ID de la cuenta bancaria' })
-  @IsMongoId() @IsNotEmpty()
+  @IsMongoId()
+  @IsNotEmpty()
   cuentaBancaria!: string;
 
   @ApiProperty({ description: 'Período (MM-YYYY)' })
-  @IsString() @IsNotEmpty()
+  @IsString()
+  @IsNotEmpty()
   periodo!: string;
 
   @ApiProperty({ description: 'Saldo según banco' })
-  @IsNumber() @IsNotEmpty()
+  @IsNumber()
+  @IsNotEmpty()
   saldoBanco!: number;
 
   @ApiProperty({ description: 'Saldo según libros' })
-  @IsNumber() @IsNotEmpty()
+  @IsNumber()
+  @IsNotEmpty()
   saldoLibros!: number;
 
   @ApiPropertyOptional({ description: 'Observaciones' })
-  @IsString() @IsOptional()
+  @IsString()
+  @IsOptional()
   observaciones?: string;
 }

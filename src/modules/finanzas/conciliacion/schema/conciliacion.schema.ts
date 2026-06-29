@@ -30,11 +30,18 @@ export class Conciliacion {
   @Prop({ required: true })
   fechaFin!: Date;
 
-  @Prop({ required: true, enum: EstadoConciliacion, default: EstadoConciliacion.PENDIENTE })
+  @Prop({
+    required: true,
+    enum: EstadoConciliacion,
+    default: EstadoConciliacion.PENDIENTE,
+  })
   estado!: EstadoConciliacion;
 
   @Prop()
   observaciones?: string;
+
+  @Prop([{ type: Types.ObjectId, ref: 'ExtractoMovimiento' }])
+  extractos?: Types.ObjectId[];
 }
 
 export const ConciliacionSchema = SchemaFactory.createForClass(Conciliacion);

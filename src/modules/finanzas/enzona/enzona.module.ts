@@ -2,8 +2,14 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { EnzonaController } from './enzona.controller';
 import { EnzonaService } from './enzona.service';
-import { Transaccion, TransaccionSchema } from '../transaccion/schema/transaccion.schema';
-import { CuentaCobrar, CuentaCobrarSchema } from '../cuenta-cobrar/schema/cuenta-cobrar.schema';
+import {
+  Transaccion,
+  TransaccionSchema,
+} from '../transaccion/schema/transaccion.schema';
+import {
+  CuentaCobrar,
+  CuentaCobrarSchema,
+} from '../cuenta-cobrar/schema/cuenta-cobrar.schema';
 
 @Module({
   controllers: [EnzonaController],
@@ -14,5 +20,6 @@ import { CuentaCobrar, CuentaCobrarSchema } from '../cuenta-cobrar/schema/cuenta
       { name: CuentaCobrar.name, schema: CuentaCobrarSchema },
     ]),
   ],
+  exports: [MongooseModule],
 })
 export class EnzonaModule {}

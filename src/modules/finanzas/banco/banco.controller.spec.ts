@@ -13,7 +13,7 @@ describe('BancoController', () => {
     codigoBanco: 'BAN-001',
     nombreBanco: 'Banco Test',
     numeroCuenta: '123-456-789',
-        tipoCuenta: TipoCuentaBancaria.CORRIENTE,
+    tipoCuenta: TipoCuentaBancaria.CORRIENTE,
     moneda: new Types.ObjectId(),
     saldoInicial: 10000,
     saldoActual: 15000,
@@ -83,7 +83,13 @@ describe('BancoController', () => {
   describe('GET /saldos', () => {
     it('should call service.getSaldos', async () => {
       const saldos = [
-        { cuentaId: mockDocument._id.toString(), numeroCuenta: '123-456-789', nombreBanco: 'Banco Test', tipoCuenta: 'corriente', saldoActual: 15000 },
+        {
+          cuentaId: mockDocument._id.toString(),
+          numeroCuenta: '123-456-789',
+          nombreBanco: 'Banco Test',
+          tipoCuenta: 'corriente',
+          saldoActual: 15000,
+        },
       ];
       mockService.getSaldos.mockResolvedValue(saldos);
 

@@ -3,11 +3,20 @@ import { ConciliacionService } from './conciliacion.service';
 import { ConciliacionController } from './conciliacion.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Conciliacion, ConciliacionSchema } from './schema/conciliacion.schema';
+import {
+  ExtractoMovimiento,
+  ExtractoMovimientoSchema,
+} from './schema/extracto-movimiento.schema';
 
 @Module({
   controllers: [ConciliacionController],
   providers: [ConciliacionService],
-  imports: [MongooseModule.forFeature([{ name: Conciliacion.name, schema: ConciliacionSchema }])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Conciliacion.name, schema: ConciliacionSchema },
+      { name: ExtractoMovimiento.name, schema: ExtractoMovimientoSchema },
+    ]),
+  ],
   exports: [MongooseModule],
 })
 export class ConciliacionModule {}

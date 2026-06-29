@@ -18,7 +18,9 @@ describe('EnzonaService', () => {
     monto: 500,
     fecha: new Date(),
     referencia: 'TXN-001',
-    toString: function () { return this._id.toString(); },
+    toString: function () {
+      return this._id.toString();
+    },
   };
 
   const mockCxc = {
@@ -30,7 +32,12 @@ describe('EnzonaService', () => {
   };
 
   beforeEach(async () => {
+    const mockMonedaModel = {
+      findOne: jest.fn(() => ({ exec: jest.fn().mockResolvedValue({ _id: new Types.ObjectId(), tipo_moneda: 'CUP' }) })),
+    };
+
     mockTransaccionModel = {
+      db: { model: jest.fn(() => mockMonedaModel) },
       findOne: jest.fn(() => ({ exec: jest.fn().mockResolvedValue(null) })),
       create: jest.fn().mockResolvedValue(mockTransaccion),
     };
@@ -42,7 +49,10 @@ describe('EnzonaService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EnzonaService,
-        { provide: getModelToken(Transaccion.name), useValue: mockTransaccionModel },
+        {
+          provide: getModelToken(Transaccion.name),
+          useValue: mockTransaccionModel,
+        },
         { provide: getModelToken(CuentaCobrar.name), useValue: mockCxcModel },
       ],
     }).compile();
@@ -92,7 +102,9 @@ describe('EnzonaService', () => {
     });
 
     it('should skip duplicate webhook', async () => {
-      mockTransaccionModel.findOne = jest.fn(() => ({ exec: jest.fn().mockResolvedValue(mockTransaccion) }));
+      mockTransaccionModel.findOne = jest.fn(() => ({
+        exec: jest.fn().mockResolvedValue(mockTransaccion),
+      }));
 
       const payload = {
         evento: EnzonaEvento.PAGO_EXITOSO,
@@ -109,8 +121,13 @@ describe('EnzonaService', () => {
     });
 
     it('should apply abono to CxC if referencia matches', async () => {
-      const cxcWithRef = { ...mockCxc, save: jest.fn().mockResolvedValue(true) };
-      mockCxcModel.findOne = jest.fn(() => ({ exec: jest.fn().mockResolvedValue(cxcWithRef) }));
+      const cxcWithRef = {
+        ...mockCxc,
+        save: jest.fn().mockResolvedValue(true),
+      };
+      mockCxcModel.findOne = jest.fn(() => ({
+        exec: jest.fn().mockResolvedValue(cxcWithRef),
+      }));
 
       const payload = {
         evento: EnzonaEvento.PAGO_EXITOSO,

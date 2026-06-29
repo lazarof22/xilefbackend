@@ -1,11 +1,18 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { TipoCredito, EstadoCredito, ClasificacionRiesgo } from '../types/credito.types';
+import {
+  TipoCredito,
+  EstadoCredito,
+  ClasificacionRiesgo,
+  MetodoAmortizacion,
+  PeriodicidadCuota,
+} from '../types/credito.types';
 export type CreditoDocument = HydratedDocument<Credito>;
 @Schema({ timestamps: true })
 export class Credito {
   @Prop({ required: true, unique: true }) codigo!: string;
-  @Prop({ required: true, type: Types.ObjectId, ref: 'Banco' }) banco!: Types.ObjectId;
+  @Prop({ required: true, type: Types.ObjectId, ref: 'Banco' })
+  banco!: Types.ObjectId;
   @Prop({ required: true, enum: TipoCredito }) tipo!: TipoCredito;
   @Prop({ required: true }) montoSolicitado!: number;
   @Prop({ default: 0 }) montoDesembolsado!: number;
@@ -16,8 +23,25 @@ export class Credito {
   @Prop() fechaAprobacion?: Date;
   @Prop() fechaDesembolso?: Date;
   @Prop() fechaVencimiento?: Date;
-  @Prop({ required: true, enum: EstadoCredito, default: EstadoCredito.SOLICITADO }) estado!: EstadoCredito;
-  @Prop({ required: true, enum: ClasificacionRiesgo, default: ClasificacionRiesgo.NORMAL }) clasificacionRiesgo!: ClasificacionRiesgo;
+  @Prop({
+    required: true,
+    enum: EstadoCredito,
+    default: EstadoCredito.SOLICITADO,
+  })
+  estado!: EstadoCredito;
+  @Prop({
+    required: true,
+    enum: ClasificacionRiesgo,
+    default: ClasificacionRiesgo.NORMAL,
+  })
+  clasificacionRiesgo!: ClasificacionRiesgo;
   @Prop() garantia?: string;
+  @Prop({ enum: MetodoAmortizacion, default: MetodoAmortizacion.FRANCES })
+  metodoAmortizacion?: MetodoAmortizacion;
+  @Prop({ default: 0 }) cuotasGeneradas!: number;
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'CuotaCredito' }] })
+  cuotas?: Types.ObjectId[];
+  @Prop({ enum: PeriodicidadCuota, default: PeriodicidadCuota.MENSUAL })
+  periodicidadCuota?: PeriodicidadCuota;
 }
 export const CreditoSchema = SchemaFactory.createForClass(Credito);

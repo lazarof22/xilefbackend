@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 import { TipoMovimientoCaja, ConceptoCaja } from '../types/caja.types';
 
 export type MovimientoCajaDocument = HydratedDocument<MovimientoCaja>;
@@ -8,6 +8,9 @@ export type MovimientoCajaDocument = HydratedDocument<MovimientoCaja>;
 export class MovimientoCaja {
   @Prop({ required: true, unique: true })
   codigo!: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'CuentaCaja', index: true })
+  cajaId?: Types.ObjectId;
 
   @Prop({ required: true, enum: TipoMovimientoCaja, index: true })
   tipo!: TipoMovimientoCaja;
@@ -31,4 +34,5 @@ export class MovimientoCaja {
   responsable?: string;
 }
 
-export const MovimientoCajaSchema = SchemaFactory.createForClass(MovimientoCaja);
+export const MovimientoCajaSchema =
+  SchemaFactory.createForClass(MovimientoCaja);

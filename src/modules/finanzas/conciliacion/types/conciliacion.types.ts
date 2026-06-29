@@ -7,6 +7,17 @@ export enum EstadoConciliacion {
   DIFERENCIA = 'diferencia',
 }
 
+export enum TipoExtracto {
+  DEBITO = 'debito',
+  CREDITO = 'credito',
+}
+
+export enum EstadoExtracto {
+  PENDIENTE = 'pendiente',
+  CONCILIADO = 'conciliado',
+  IGNORADO = 'ignorado',
+}
+
 export interface ConciliacionExport {
   codigo: string;
   cuentaBancaria: Types.ObjectId | Record<string, unknown>;

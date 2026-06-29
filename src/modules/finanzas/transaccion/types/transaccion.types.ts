@@ -13,6 +13,12 @@ export enum MetodoPago {
   OTRO = 'otro',
 }
 
+export enum TipoOperacionCambio {
+  COMPRA_DIVISA = 'compra_divisa',
+  VENTA_DIVISA = 'venta_divisa',
+  CONTRAVALOR = 'contravalor',
+}
+
 export interface TransaccionExport {
   codigo: string;
   tipo: TipoTransaccion;
@@ -26,6 +32,9 @@ export interface TransaccionExport {
   cuentaBancaria?: Types.ObjectId | Record<string, unknown>;
   cliente?: Types.ObjectId | Record<string, unknown>;
   proveedor?: Types.ObjectId | Record<string, unknown>;
+  tipoCambio?: number;
+  monedaOrigen?: Types.ObjectId | Record<string, unknown>;
+  tipoOperacionCambio?: TipoOperacionCambio;
 }
 
 export interface ResumenTransacciones {

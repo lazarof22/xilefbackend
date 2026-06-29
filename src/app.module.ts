@@ -41,11 +41,20 @@ import { CajaModule } from './modules/finanzas/caja/caja.module';
 import { CombustibleModule } from './modules/finanzas/combustible/combustible.module';
 import { CreditoModule } from './modules/finanzas/credito/credito.module';
 import { ChequeModule } from './modules/finanzas/cheque/cheque.module';
-
+import { OperacionFinancieraModule } from './modules/finanzas/operacion-financiera/operacion-financiera.module';
+import { PlanificacionPagosModule } from './modules/finanzas/planificacion-pagos/planificacion-pagos.module';
+import { FlujoEfectivoModule } from './modules/finanzas/flujo-efectivo/flujo-efectivo.module';
+import { AnticiposViaticosModule } from './modules/finanzas/anticipos-viaticos/anticipos-viaticos.module';
+import { CambioDivisaModule } from './modules/finanzas/cambio-divisa/cambio-divisa.module';
+import { PosicionMonetariaModule } from './modules/finanzas/posicion-monetaria/posicion-monetaria.module';
+import { PlanificacionCobrosModule } from './modules/finanzas/planificacion-cobros/planificacion-cobros.module';
+import { TransferenciasModule } from './modules/finanzas/transferencias/transferencias.module';
+import { RedistribucionRecursosModule } from './modules/finanzas/redistribucion-recursos/redistribucion-recursos.module';
+import { TransfermovilModule } from './modules/finanzas/transfermovil/transfermovil.module';
+import { TasaCambioModule } from './modules/nomencladores/tasa-cambio/tasa-cambio.module';
 
 @Module({
   imports: [
-
     //Configuracion de la Base de datos
     ConfigModule.forRoot(),
     MongooseModule.forRootAsync({
@@ -96,8 +105,19 @@ import { ChequeModule } from './modules/finanzas/cheque/cheque.module';
     CombustibleModule,
     CreditoModule,
     ChequeModule,
+    OperacionFinancieraModule,
+    PlanificacionPagosModule,
+    FlujoEfectivoModule,
+    AnticiposViaticosModule,
+    CambioDivisaModule,
+    PosicionMonetariaModule,
+    PlanificacionCobrosModule,
+    TransferenciasModule,
+    RedistribucionRecursosModule,
+    TransfermovilModule,
+    TasaCambioModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

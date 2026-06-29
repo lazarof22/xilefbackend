@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { BancoService } from './banco.service';
 import { CreateBancoDto } from './dto/create-banco.dto';
 import { UpdateBancoDto } from './dto/update-banco.dto';
@@ -10,9 +18,17 @@ export class BancoController {
   constructor(private readonly bancoService: BancoService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Registrar nueva cuenta bancaria (Res. 248/2008 BCC)' })
-  @ApiResponse({ status: 201, description: 'Cuenta bancaria registrada exitosamente' })
-  @ApiResponse({ status: 400, description: 'Ya existe una cuenta con ese código' })
+  @ApiOperation({
+    summary: 'Registrar nueva cuenta bancaria (Res. 248/2008 BCC)',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Cuenta bancaria registrada exitosamente',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Ya existe una cuenta con ese código',
+  })
   create(@Body() createDto: CreateBancoDto) {
     return this.bancoService.create(createDto);
   }
@@ -26,7 +42,10 @@ export class BancoController {
 
   @Get('saldos')
   @ApiOperation({ summary: 'Obtener saldos actuales de cuentas activas' })
-  @ApiResponse({ status: 200, description: 'Saldos actuales de cuentas activas' })
+  @ApiResponse({
+    status: 200,
+    description: 'Saldos actuales de cuentas activas',
+  })
   getSaldos() {
     return this.bancoService.getSaldos();
   }
