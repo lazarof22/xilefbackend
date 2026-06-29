@@ -18,6 +18,7 @@ import {
   ApiResponse,
   ApiParam,
   ApiQuery,
+  ApiBody,
 } from '@nestjs/swagger';
 
 @ApiTags('Planificación de Pagos')
@@ -58,6 +59,7 @@ export class PlanificacionPagosController {
   @ApiOperation({ summary: 'Obtener proyección de pagos por semana' })
   @ApiQuery({
     name: 'hasta',
+    required: true,
     description: 'Fecha límite para la proyección (YYYY-MM-DD)',
   })
   @ApiResponse({ status: 200, description: 'Proyección de pagos' })
@@ -67,8 +69,16 @@ export class PlanificacionPagosController {
 
   @Get('periodo')
   @ApiOperation({ summary: 'Obtener planes de pago por periodo' })
-  @ApiQuery({ name: 'desde', description: 'Fecha de inicio (YYYY-MM-DD)' })
-  @ApiQuery({ name: 'hasta', description: 'Fecha de fin (YYYY-MM-DD)' })
+  @ApiQuery({
+    name: 'desde',
+    required: true,
+    description: 'Fecha de inicio (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'hasta',
+    required: true,
+    description: 'Fecha de fin (YYYY-MM-DD)',
+  })
   @ApiResponse({ status: 200, description: 'Planes de pago del periodo' })
   getPorPeriodo(@Query('desde') desde: string, @Query('hasta') hasta: string) {
     return this.planificacionPagosService.getPorPeriodo(desde, hasta);
@@ -128,6 +138,19 @@ export class PlanificacionPagosController {
   @Post(':id/reprogramar')
   @ApiOperation({ summary: 'Reprogramar plan de pago' })
   @ApiParam({ name: 'id', description: 'ID del plan de pago' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        nuevaFecha: {
+          type: 'string',
+          format: 'date',
+          description: 'Nueva fecha programada (YYYY-MM-DD)',
+        },
+      },
+      required: ['nuevaFecha'],
+    },
+  })
   @ApiResponse({ status: 200, description: 'Plan de pago reprogramado' })
   @ApiResponse({
     status: 400,

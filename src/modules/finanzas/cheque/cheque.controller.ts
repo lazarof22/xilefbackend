@@ -33,7 +33,7 @@ export class ChequeController {
   }
   @Get(':id')
   @ApiOperation({ summary: 'Obtener cheque' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del cheque' })
   @ApiResponse({ status: 200, description: 'Cheque encontrado' })
   @ApiResponse({ status: 404, description: 'Cheque no encontrado' })
   findOne(@Param('id') id: string) {
@@ -41,7 +41,7 @@ export class ChequeController {
   }
   @Patch(':id/cobrar')
   @ApiOperation({ summary: 'Registrar cobro' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del cheque' })
   @ApiResponse({ status: 200, description: 'Cobro registrado' })
   @ApiResponse({ status: 404, description: 'Cheque no encontrado' })
   registrarCobro(
@@ -52,7 +52,7 @@ export class ChequeController {
   }
   @Patch(':id/devolver')
   @ApiOperation({ summary: 'Registrar devolución' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del cheque' })
   @ApiResponse({ status: 200, description: 'Devolución registrada' })
   @ApiResponse({ status: 404, description: 'Cheque no encontrado' })
   registrarDevolucion(
@@ -63,7 +63,7 @@ export class ChequeController {
   }
   @Patch(':id/anular')
   @ApiOperation({ summary: 'Anular cheque' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del cheque' })
   @ApiResponse({ status: 200, description: 'Cheque anulado' })
   @ApiResponse({
     status: 400,

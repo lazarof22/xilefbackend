@@ -1,5 +1,5 @@
 import { Controller, Post, Get, Body, Param, HttpCode } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { TransfermovilService } from './transfermovil.service';
 import { TransfermovilWebhookDto } from './dto/transfermovil-webhook.dto';
 import { GenerarQrDinamicoDto } from './dto/generar-qr-dinamico.dto';
@@ -49,6 +49,10 @@ export class TransfermovilController {
 
   @Get('estado/:estado')
   @ApiOperation({ summary: 'Obtener pagos por estado' })
+  @ApiParam({
+    name: 'estado',
+    description: 'Estado del pago (PENDIENTE, COMPLETADO, FALLIDO)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista de pagos filtrada por estado',
@@ -66,6 +70,7 @@ export class TransfermovilController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un pago por ID' })
+  @ApiParam({ name: 'id', description: 'ID del pago' })
   @ApiResponse({ status: 200, description: 'Pago encontrado' })
   @ApiResponse({ status: 404, description: 'Pago no encontrado' })
   async findOne(@Param('id') id: string) {

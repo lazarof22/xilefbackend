@@ -92,7 +92,10 @@ export class CreditoController {
 
   @Post(':id/amortizacion/generar')
   @ApiOperation({ summary: 'Generar plan de amortización' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del crédito' })
+  @ApiResponse({ status: 201, description: 'Plan de amortización generado' })
+  @ApiResponse({ status: 400, description: 'Error al generar amortización' })
+  @ApiResponse({ status: 404, description: 'Crédito no encontrado' })
   generarAmortizacion(
     @Param('id') id: string,
     @Body() dto: GenerarAmortizacionDto,
@@ -102,7 +105,9 @@ export class CreditoController {
 
   @Get(':id/amortizacion')
   @ApiOperation({ summary: 'Obtener plan de amortización' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del crédito' })
+  @ApiResponse({ status: 200, description: 'Plan de amortización obtenido' })
+  @ApiResponse({ status: 404, description: 'Crédito no encontrado' })
   getAmortizacion(@Param('id') id: string) {
     return this.creditoService.getPlanAmortizacion(id);
   }
@@ -111,7 +116,10 @@ export class CreditoController {
   @ApiOperation({
     summary: 'Regenerar plan de amortización (elimina cuotas existentes)',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del crédito' })
+  @ApiResponse({ status: 200, description: 'Plan de amortización regenerado' })
+  @ApiResponse({ status: 400, description: 'Error al regenerar amortización' })
+  @ApiResponse({ status: 404, description: 'Crédito no encontrado' })
   regenerarAmortizacion(
     @Param('id') id: string,
     @Body() dto: GenerarAmortizacionDto,
@@ -123,7 +131,10 @@ export class CreditoController {
 
   @Post('cuotas/:cuotaId/abonar')
   @ApiOperation({ summary: 'Abonar a una cuota' })
-  @ApiParam({ name: 'cuotaId' })
+  @ApiParam({ name: 'cuotaId', description: 'ID de la cuota' })
+  @ApiResponse({ status: 200, description: 'Abono registrado exitosamente' })
+  @ApiResponse({ status: 400, description: 'Error al registrar abono' })
+  @ApiResponse({ status: 404, description: 'Cuota no encontrada' })
   abonarCuota(@Param('cuotaId') cuotaId: string, @Body() dto: AbonarCuotaDto) {
     return this.creditoService.abonarCuota(cuotaId, dto);
   }
@@ -132,7 +143,13 @@ export class CreditoController {
 
   @Post(':id/aprobar')
   @ApiOperation({ summary: 'Aprobar crédito (solo desde solicitado)' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del crédito' })
+  @ApiResponse({ status: 200, description: 'Crédito aprobado' })
+  @ApiResponse({
+    status: 400,
+    description: 'No se puede aprobar en estado actual',
+  })
+  @ApiResponse({ status: 404, description: 'Crédito no encontrado' })
   aprobar(@Param('id') id: string) {
     return this.creditoService.aprobarCredito(id);
   }
@@ -141,14 +158,26 @@ export class CreditoController {
   @ApiOperation({
     summary: 'Desembolsar crédito y generar plan de amortización',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del crédito' })
+  @ApiResponse({ status: 200, description: 'Crédito desembolsado' })
+  @ApiResponse({
+    status: 400,
+    description: 'No se puede desembolsar en estado actual',
+  })
+  @ApiResponse({ status: 404, description: 'Crédito no encontrado' })
   desembolsar(@Param('id') id: string) {
     return this.creditoService.desembolsarCredito(id);
   }
 
   @Post(':id/castigar')
   @ApiOperation({ summary: 'Castigar crédito (solo en_pago o vencido)' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del crédito' })
+  @ApiResponse({ status: 200, description: 'Crédito castigado' })
+  @ApiResponse({
+    status: 400,
+    description: 'No se puede castigar en estado actual',
+  })
+  @ApiResponse({ status: 404, description: 'Crédito no encontrado' })
   castigar(@Param('id') id: string) {
     return this.creditoService.castigarCredito(id);
   }

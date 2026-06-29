@@ -150,8 +150,16 @@ export class CajaController {
   @Get('resumen')
   @ApiOperation({ summary: 'Resumen por concepto' })
   @ApiResponse({ status: 200, description: 'Resumen por concepto' })
-  @ApiQuery({ name: 'desde', required: false })
-  @ApiQuery({ name: 'hasta', required: false })
+  @ApiQuery({
+    name: 'desde',
+    required: false,
+    description: 'Fecha inicial (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'hasta',
+    required: false,
+    description: 'Fecha final (YYYY-MM-DD)',
+  })
   @ApiQuery({
     name: 'cajaId',
     required: false,
@@ -184,7 +192,7 @@ export class CajaController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener movimiento por ID' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del movimiento de caja' })
   @ApiResponse({ status: 200, description: 'Movimiento encontrado' })
   @ApiResponse({ status: 404, description: 'No encontrado' })
   findOne(@Param('id') id: string) {
@@ -193,7 +201,7 @@ export class CajaController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar movimiento' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del movimiento de caja' })
   @ApiResponse({ status: 200, description: 'Movimiento eliminado' })
   @ApiResponse({ status: 404, description: 'No encontrado' })
   remove(@Param('id') id: string) {

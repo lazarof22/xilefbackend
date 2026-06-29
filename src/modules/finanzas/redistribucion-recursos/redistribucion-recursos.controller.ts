@@ -77,10 +77,7 @@ export class RedistribucionRecursosController {
     status: 400,
     description: 'No se puede aprobar en estado actual',
   })
-  aprobar(
-    @Param('id') id: string,
-    @Body() dto: AprobarRedistribucionDto,
-  ) {
+  aprobar(@Param('id') id: string, @Body() dto: AprobarRedistribucionDto) {
     return this.redistribucionService.aprobar(id, dto.aprobadoPor);
   }
 

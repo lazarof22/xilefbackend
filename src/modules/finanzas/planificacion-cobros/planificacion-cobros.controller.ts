@@ -54,7 +54,11 @@ export class PlanificacionCobrosController {
 
   @Get('proyeccion-ingresos')
   @ApiOperation({ summary: 'Proyección de ingresos por período' })
-  @ApiQuery({ name: 'hasta', description: 'Fecha límite de la proyección' })
+  @ApiQuery({
+    name: 'hasta',
+    required: true,
+    description: 'Fecha límite de la proyección (YYYY-MM-DD)',
+  })
   @ApiResponse({ status: 200, description: 'Proyección de ingresos' })
   getProyeccionIngresos(@Query('hasta') hasta: string) {
     return this.planificacionService.getProyeccionIngresos(hasta);
@@ -62,8 +66,16 @@ export class PlanificacionCobrosController {
 
   @Get('periodo')
   @ApiOperation({ summary: 'Planes de cobro por período' })
-  @ApiQuery({ name: 'desde', description: 'Fecha inicial' })
-  @ApiQuery({ name: 'hasta', description: 'Fecha final' })
+  @ApiQuery({
+    name: 'desde',
+    required: true,
+    description: 'Fecha inicial (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'hasta',
+    required: true,
+    description: 'Fecha final (YYYY-MM-DD)',
+  })
   @ApiResponse({ status: 200, description: 'Planes del período' })
   getPorPeriodo(@Query('desde') desde: string, @Query('hasta') hasta: string) {
     return this.planificacionService.getPorPeriodo(desde, hasta);

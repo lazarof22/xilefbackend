@@ -11,7 +11,13 @@ import { CombustibleService } from './combustible.service';
 import { CreateVehiculoDto } from './dto/create-vehiculo.dto';
 import { CreateTarjetaDto } from './dto/create-tarjeta.dto';
 import { CreateCargaDto } from './dto/create-carga.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 
 @ApiTags('Combustible')
 @Controller('combustible')
@@ -34,7 +40,7 @@ export class CombustibleController {
 
   @Get('vehiculo/:id')
   @ApiOperation({ summary: 'Obtener vehículo por ID' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del vehículo' })
   @ApiResponse({ status: 200, description: 'Vehículo encontrado' })
   @ApiResponse({ status: 404, description: 'Vehículo no encontrado' })
   findVehiculo(@Param('id') id: string) {
@@ -43,7 +49,7 @@ export class CombustibleController {
 
   @Delete('vehiculo/:id')
   @ApiOperation({ summary: 'Eliminar vehículo' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'ID del vehículo' })
   @ApiResponse({ status: 200, description: 'Vehículo eliminado' })
   @ApiResponse({ status: 404, description: 'Vehículo no encontrado' })
   removeVehiculo(@Param('id') id: string) {
@@ -90,7 +96,7 @@ export class CombustibleController {
 
   @Get('carga/vehiculo/:vehiculoId')
   @ApiOperation({ summary: 'Cargas por vehículo' })
-  @ApiParam({ name: 'vehiculoId' })
+  @ApiParam({ name: 'vehiculoId', description: 'ID del vehículo' })
   @ApiResponse({ status: 200, description: 'Cargas del vehículo' })
   getCargasPorVehiculo(@Param('vehiculoId') vehiculoId: string) {
     return this.combustibleService.getCargasPorVehiculo(vehiculoId);
@@ -98,6 +104,11 @@ export class CombustibleController {
 
   @Get('consumo')
   @ApiOperation({ summary: 'Resumen de consumo' })
+  @ApiQuery({
+    name: 'vehiculoId',
+    required: false,
+    description: 'Filtrar por vehículo',
+  })
   @ApiResponse({ status: 200, description: 'Resumen de consumo' })
   getConsumo(@Query('vehiculoId') vehiculoId?: string) {
     return this.combustibleService.getConsumoResumen(vehiculoId);

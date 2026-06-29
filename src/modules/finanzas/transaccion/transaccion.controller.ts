@@ -50,8 +50,16 @@ export class TransaccionController {
   @Get('periodo')
   @ApiOperation({ summary: 'Transacciones por período' })
   @ApiResponse({ status: 200, description: 'Transacciones del período' })
-  @ApiQuery({ name: 'desde', required: true })
-  @ApiQuery({ name: 'hasta', required: true })
+  @ApiQuery({
+    name: 'desde',
+    required: true,
+    description: 'Fecha inicial (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'hasta',
+    required: true,
+    description: 'Fecha final (YYYY-MM-DD)',
+  })
   getPorPeriodo(@Query('desde') desde: string, @Query('hasta') hasta: string) {
     return this.transaccionService.getPorPeriodo(desde, hasta);
   }
@@ -59,8 +67,16 @@ export class TransaccionController {
   @Get('resumen')
   @ApiOperation({ summary: 'Resumen de ingresos/egresos' })
   @ApiResponse({ status: 200, description: 'Resumen de ingresos y egresos' })
-  @ApiQuery({ name: 'desde', required: false })
-  @ApiQuery({ name: 'hasta', required: false })
+  @ApiQuery({
+    name: 'desde',
+    required: false,
+    description: 'Fecha inicial (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'hasta',
+    required: false,
+    description: 'Fecha final (YYYY-MM-DD)',
+  })
   getResumen(@Query('desde') desde?: string, @Query('hasta') hasta?: string) {
     return this.transaccionService.getResumen(desde, hasta);
   }
@@ -70,8 +86,16 @@ export class TransaccionController {
     summary: 'Flujo de efectivo (NCC 2 - Estado de Flujo de Efectivo)',
   })
   @ApiResponse({ status: 200, description: 'Flujo de efectivo del período' })
-  @ApiQuery({ name: 'desde', required: true })
-  @ApiQuery({ name: 'hasta', required: true })
+  @ApiQuery({
+    name: 'desde',
+    required: true,
+    description: 'Fecha inicial (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'hasta',
+    required: true,
+    description: 'Fecha final (YYYY-MM-DD)',
+  })
   getFlujoEfectivo(
     @Query('desde') desde: string,
     @Query('hasta') hasta: string,

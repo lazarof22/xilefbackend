@@ -61,8 +61,16 @@ export class TransferenciasController {
   @Get('periodo')
   @ApiOperation({ summary: 'Transferencias por período' })
   @ApiResponse({ status: 200, description: 'Transferencias del período' })
-  @ApiQuery({ name: 'desde', required: true })
-  @ApiQuery({ name: 'hasta', required: true })
+  @ApiQuery({
+    name: 'desde',
+    required: true,
+    description: 'Fecha inicial (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'hasta',
+    required: true,
+    description: 'Fecha final (YYYY-MM-DD)',
+  })
   getPorPeriodo(@Query('desde') desde: string, @Query('hasta') hasta: string) {
     return this.transferenciasService.getPorPeriodo(desde, hasta);
   }
@@ -70,8 +78,16 @@ export class TransferenciasController {
   @Get('resumen')
   @ApiOperation({ summary: 'Resumen de transferencias' })
   @ApiResponse({ status: 200, description: 'Resumen de transferencias' })
-  @ApiQuery({ name: 'desde', required: false })
-  @ApiQuery({ name: 'hasta', required: false })
+  @ApiQuery({
+    name: 'desde',
+    required: false,
+    description: 'Fecha inicial (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'hasta',
+    required: false,
+    description: 'Fecha final (YYYY-MM-DD)',
+  })
   getResumen(@Query('desde') desde?: string, @Query('hasta') hasta?: string) {
     return this.transferenciasService.getResumen(desde, hasta);
   }
@@ -119,10 +135,7 @@ export class TransferenciasController {
   @ApiResponse({ status: 200, description: 'Transferencia rechazada' })
   @ApiResponse({ status: 400, description: 'Estado inválido' })
   @ApiResponse({ status: 404, description: 'Transferencia no encontrada' })
-  rechazar(
-    @Param('id') id: string,
-    @Body() dto: RechazarTransferenciaDto,
-  ) {
+  rechazar(@Param('id') id: string, @Body() dto: RechazarTransferenciaDto) {
     return this.transferenciasService.rechazar(id, dto.motivo);
   }
 
