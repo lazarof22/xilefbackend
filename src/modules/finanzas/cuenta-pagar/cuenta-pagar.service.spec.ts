@@ -106,7 +106,9 @@ describe('CuentaPagarService', () => {
 
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
 
-      await expect(service.create(createDto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(createDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -127,16 +129,22 @@ describe('CuentaPagarService', () => {
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
       const result = await service.findOne(mockDocument._id.toHexString());
       expect(result).toEqual(mockDocument);
-      expect(mockCxpModel.findById).toHaveBeenCalledWith(mockDocument._id.toHexString());
+      expect(mockCxpModel.findById).toHaveBeenCalledWith(
+        mockDocument._id.toHexString(),
+      );
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('invalid-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when cuenta-pagar does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.findOne(new Types.ObjectId().toHexString())).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne(new Types.ObjectId().toHexString()),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -144,7 +152,10 @@ describe('CuentaPagarService', () => {
     it('should update a cuenta-pagar', async () => {
       const updateDto = { notas: 'Updated notes' };
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
-      const result = await service.update(mockDocument._id.toHexString(), updateDto);
+      const result = await service.update(
+        mockDocument._id.toHexString(),
+        updateDto,
+      );
       expect(mockCxpModel.findByIdAndUpdate).toHaveBeenCalledWith(
         mockDocument._id.toHexString(),
         updateDto,
@@ -154,12 +165,16 @@ describe('CuentaPagarService', () => {
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.update('invalid-id', {})).rejects.toThrow(NotFoundException);
+      await expect(service.update('invalid-id', {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when cuenta-pagar to update does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.update(new Types.ObjectId().toHexString(), { notas: 'test' })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update(new Types.ObjectId().toHexString(), { notas: 'test' }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -168,16 +183,22 @@ describe('CuentaPagarService', () => {
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
       const result = await service.remove(mockDocument._id.toHexString());
       expect(result).toEqual({ deleted: true });
-      expect(mockCxpModel.findByIdAndDelete).toHaveBeenCalledWith(mockDocument._id.toHexString());
+      expect(mockCxpModel.findByIdAndDelete).toHaveBeenCalledWith(
+        mockDocument._id.toHexString(),
+      );
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.remove('invalid-id')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('invalid-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when cuenta-pagar to remove does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.remove(new Types.ObjectId().toHexString())).rejects.toThrow(NotFoundException);
+      await expect(
+        service.remove(new Types.ObjectId().toHexString()),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -186,7 +207,9 @@ describe('CuentaPagarService', () => {
       mockQueryBuilder.exec.mockResolvedValue([mockDocument]);
       const result = await service.getVencidas();
       expect(mockCxpModel.find).toHaveBeenCalledWith({
-        estado: { $in: [EstadoCxP.PENDIENTE, EstadoCxP.PARCIAL, EstadoCxP.VENCIDA] },
+        estado: {
+          $in: [EstadoCxP.PENDIENTE, EstadoCxP.PARCIAL, EstadoCxP.VENCIDA],
+        },
         fechaVencimiento: { $lt: expect.any(Date) },
       });
       expect(result).toEqual([mockDocument]);
@@ -214,7 +237,9 @@ describe('CuentaPagarService', () => {
     it('should apply full payment and mark as PAGADA', async () => {
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
 
-      const result = await service.abonar(mockDocument._id.toHexString(), { monto: 5000 });
+      const result = await service.abonar(mockDocument._id.toHexString(), {
+        monto: 5000,
+      });
 
       expect(mockDocument.saldoPendiente).toBe(0);
       expect(mockDocument.estado).toBe(EstadoCxP.PAGADA);
@@ -223,10 +248,17 @@ describe('CuentaPagarService', () => {
     });
 
     it('should apply partial payment and mark as PARCIAL', async () => {
-      const doc = { ...mockDocument, saldoPendiente: 5000, estado: EstadoCxP.PENDIENTE, save: mockSave };
+      const doc = {
+        ...mockDocument,
+        saldoPendiente: 5000,
+        estado: EstadoCxP.PENDIENTE,
+        save: mockSave,
+      };
       mockQueryBuilder.exec.mockResolvedValue(doc);
 
-      const result = await service.abonar(doc._id.toHexString(), { monto: 2000 });
+      const result = await service.abonar(doc._id.toHexString(), {
+        monto: 2000,
+      });
 
       expect(doc.saldoPendiente).toBe(3000);
       expect(doc.estado).toBe(EstadoCxP.PARCIAL);
@@ -237,34 +269,46 @@ describe('CuentaPagarService', () => {
       const doc = { ...mockDocument, estado: EstadoCxP.PAGADA, save: mockSave };
       mockQueryBuilder.exec.mockResolvedValue(doc);
 
-      await expect(service.abonar(doc._id.toHexString(), { monto: 1000 })).rejects.toThrow(BadRequestException);
+      await expect(
+        service.abonar(doc._id.toHexString(), { monto: 1000 }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when monto exceeds saldoPendiente', async () => {
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
 
-      await expect(service.abonar(mockDocument._id.toHexString(), { monto: 9999 })).rejects.toThrow(BadRequestException);
+      await expect(
+        service.abonar(mockDocument._id.toHexString(), { monto: 9999 }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when monto is negative', async () => {
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
 
-      await expect(service.abonar(mockDocument._id.toHexString(), { monto: -100 })).rejects.toThrow(BadRequestException);
+      await expect(
+        service.abonar(mockDocument._id.toHexString(), { monto: -100 }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when monto is zero', async () => {
       mockQueryBuilder.exec.mockResolvedValue(mockDocument);
 
-      await expect(service.abonar(mockDocument._id.toHexString(), { monto: 0 })).rejects.toThrow(BadRequestException);
+      await expect(
+        service.abonar(mockDocument._id.toHexString(), { monto: 0 }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw NotFoundException for invalid ObjectId', async () => {
-      await expect(service.abonar('invalid-id', { monto: 100 })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.abonar('invalid-id', { monto: 100 }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when cuenta-pagar does not exist', async () => {
       mockQueryBuilder.exec.mockResolvedValue(null);
-      await expect(service.abonar(new Types.ObjectId().toHexString(), { monto: 100 })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.abonar(new Types.ObjectId().toHexString(), { monto: 100 }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -289,9 +333,7 @@ describe('CuentaPagarService', () => {
     });
 
     it('should return zero totalPendiente when aggregate is empty', async () => {
-      mockQueryBuilder.exec
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
+      mockQueryBuilder.exec.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       const result = await service.getResumen();
 

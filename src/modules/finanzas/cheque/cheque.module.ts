@@ -6,7 +6,9 @@ import { Cheque, ChequeSchema } from './schema/cheque.schema';
 @Module({
   controllers: [ChequeController],
   providers: [ChequeService],
-  imports: [MongooseModule.forFeature([{ name: Cheque.name, schema: ChequeSchema }])],
+  imports: [
+    MongooseModule.forFeature([{ name: Cheque.name, schema: ChequeSchema }]),
+  ],
   exports: [MongooseModule],
 })
 export class ChequeModule {}

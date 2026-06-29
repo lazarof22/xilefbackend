@@ -7,12 +7,14 @@ export class Cheque {
   @Prop({ required: true, unique: true }) numeroCheque!: string;
   @Prop({ required: true, enum: TipoCheque }) tipo!: TipoCheque;
   @Prop({ required: true }) beneficiario!: string;
-  @Prop({ required: true, type: Types.ObjectId, ref: 'Banco' }) cuentaBancaria!: Types.ObjectId;
+  @Prop({ required: true, type: Types.ObjectId, ref: 'Banco' })
+  cuentaBancaria!: Types.ObjectId;
   @Prop({ required: true }) monto!: number;
   @Prop({ required: true }) fechaEmision!: Date;
   @Prop() fechaCobro?: Date;
   @Prop() fechaDevolucion?: Date;
-  @Prop({ required: true, enum: EstadoCheque, default: EstadoCheque.EMITIDO }) estado!: EstadoCheque;
+  @Prop({ required: true, enum: EstadoCheque, default: EstadoCheque.EMITIDO })
+  estado!: EstadoCheque;
   @Prop() concepto?: string;
   @Prop() motivoDevolucion?: string;
 }

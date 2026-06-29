@@ -7,7 +7,11 @@ import { CuentaPagar, CuentaPagarSchema } from './schema/cuenta-pagar.schema';
 @Module({
   controllers: [CuentaPagarController],
   providers: [CuentaPagarService],
-  imports: [MongooseModule.forFeature([{ name: CuentaPagar.name, schema: CuentaPagarSchema }])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: CuentaPagar.name, schema: CuentaPagarSchema },
+    ]),
+  ],
   exports: [MongooseModule],
 })
 export class CuentaPagarModule {}

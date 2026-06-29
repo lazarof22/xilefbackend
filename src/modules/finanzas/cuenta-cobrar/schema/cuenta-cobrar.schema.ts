@@ -27,7 +27,12 @@ export class CuentaCobrar {
   @Prop({ required: true, index: true })
   fechaVencimiento!: Date;
 
-  @Prop({ required: true, enum: EstadoCxC, default: EstadoCxC.PENDIENTE, index: true })
+  @Prop({
+    required: true,
+    enum: EstadoCxC,
+    default: EstadoCxC.PENDIENTE,
+    index: true,
+  })
   estado!: EstadoCxC;
 
   @Prop()

@@ -27,7 +27,12 @@ export class CuentaPagar {
   @Prop({ required: true, index: true })
   fechaVencimiento!: Date;
 
-  @Prop({ required: true, enum: EstadoCxP, default: EstadoCxP.PENDIENTE, index: true })
+  @Prop({
+    required: true,
+    enum: EstadoCxP,
+    default: EstadoCxP.PENDIENTE,
+    index: true,
+  })
   estado!: EstadoCxP;
 
   @Prop()

@@ -145,7 +145,11 @@ describe('CuentaCobrarController', () => {
   describe('POST /:id/abonar', () => {
     it('should call service.abonar with id and abono', async () => {
       const id = new Types.ObjectId().toHexString();
-      const abono = { monto: 2000, fechaPago: '2024-03-01', referencia: 'PAG-001' };
+      const abono = {
+        monto: 2000,
+        fechaPago: '2024-03-01',
+        referencia: 'PAG-001',
+      };
       mockService.abonar.mockResolvedValue(mockDocument);
 
       const result = await controller.abonar(id, abono);

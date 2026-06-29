@@ -5,6 +5,7 @@ export enum EstadoCxP {
   PARCIAL = 'parcial',
   PAGADA = 'pagada',
   VENCIDA = 'vencida',
+  CASTIGADA = 'castigada',
 }
 
 export interface CxPExport {

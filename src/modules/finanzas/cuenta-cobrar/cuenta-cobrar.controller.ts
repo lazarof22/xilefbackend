@@ -1,7 +1,16 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { CuentaCobrarService } from './cuenta-cobrar.service';
 import { CreateCuentaCobrarDto } from './dto/create-cuenta-cobrar.dto';
 import { UpdateCuentaCobrarDto } from './dto/update-cuenta-cobrar.dto';
+import { AbonarCuentaCobrarDto } from './dto/abonar-cuenta-cobrar.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 
 @ApiTags('Cuentas por Cobrar')
@@ -11,7 +20,10 @@ export class CuentaCobrarController {
 
   @Post()
   @ApiOperation({ summary: 'Registrar cuenta por cobrar' })
-  @ApiResponse({ status: 201, description: 'Cuenta por cobrar registrada exitosamente' })
+  @ApiResponse({
+    status: 201,
+    description: 'Cuenta por cobrar registrada exitosamente',
+  })
   @ApiResponse({ status: 400, description: 'Ya existe una CxC con ese código' })
   create(@Body() createDto: CreateCuentaCobrarDto) {
     return this.cxcService.create(createDto);
@@ -77,7 +89,7 @@ export class CuentaCobrarController {
   @ApiResponse({ status: 200, description: 'Abono registrado exitosamente' })
   @ApiResponse({ status: 400, description: 'Error al registrar abono' })
   @ApiResponse({ status: 404, description: 'Cuenta por cobrar no encontrada' })
-  abonar(@Param('id') id: string, @Body() abono: { monto: number; fechaPago?: string; referencia?: string }) {
+  abonar(@Param('id') id: string, @Body() abono: AbonarCuentaCobrarDto) {
     return this.cxcService.abonar(id, abono);
   }
 

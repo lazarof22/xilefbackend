@@ -66,3 +66,31 @@ LICENSE_SIGN_SECRET=<32+ chars>
 - Prettier: single quotes, trailing commas
 - ESLint: `@typescript-eslint/no-explicit-any: off` — avoid adding this rule back
 - No CI/CD, no Docker, no Husky — all verification is manual
+
+## Subagent Guide — Which Agent for What
+
+### Por modelo (calidad decreciente)
+
+| Modelo | Agentes | Uso |
+|--------|---------|-----|
+| **deepseek-v4-pro** | `backend-developer`, `build-error-resolver`, `go-build-resolver`, `rust-build-resolver`, `java-build-resolver`, `kotlin-build-resolver`, `cpp-build-resolver`, `security-reviewer`, `go-reviewer`, `rust-reviewer`, `java-reviewer`, `kotlin-reviewer`, `cpp-reviewer`, `python-reviewer`, `php-reviewer`, `database-reviewer` | **Código de producción**, lógica de negocio compleja, resolución de errores de compilación, revisiones de seguridad |
+| **glm-5.2** | `architect`, `planner` | Diseño de arquitectura, planificación de proyectos grandes, decisiones técnicas |
+| **kimi-k2.7-code** | `code-reviewer`, `doc-updater`, `e2e-runner`, `refactor-cleaner`, `tdd-guide` | Code review, documentación, tests E2E, refactors, TDD |
+| **mimo-v2.5** | `docs-lookup`, `harness-optimizer`, `loop-operator` | Consulta de documentación, optimización de configuración, monitoreo de loops |
+| **flash** | `lightweight-tasks`, `frontend-developer` | Tareas simples y rápidas, UI simple |
+
+### Reglas de selección
+
+| Si la tarea es... | Usar |
+|---|---|
+| Escribir/modificar **código NestJS** (modules, services, controllers, schemas, DTOs) | `backend-developer` |
+| Resolver **errores de TypeScript** o build | `build-error-resolver` |
+| **Planificar** arquitectura o features grandes | `planner` → después `backend-developer` |
+| **Explorar** el codebase (búsquedas, entender estructura) | `explore` |
+| **Revisar** código existente | `code-reviewer` |
+| **Documentar** (README, docs) | `doc-updater` |
+| **Tareas pequeñas** (< 3 archivos, cambios simples) | `lightweight-tasks` |
+| **Tests** (escribir tests primero) | `tdd-guide` |
+| **Seguridad** (auth, validación, protección) | `security-reviewer` |
+
+⚠️ **NO usar `lightweight-tasks` para código NestJS de producción.** Siempre preferir `backend-developer` para lógica de backend. `lightweight-tasks` es solo para cambios triviales (renombrar, editar configs, tareas de 1-2 archivos simples).
