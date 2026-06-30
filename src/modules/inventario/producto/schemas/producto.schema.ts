@@ -30,6 +30,11 @@ export class Producto {
     @Prop({ required: true,type:Types.ObjectId, ref: 'Estado' })
     estado!: Types.ObjectId;
 
+    @Prop({ type: Types.ObjectId, ref: 'Almacen' })
+    almacen?: Types.ObjectId;
+
+    @Prop({ type: Types.ObjectId, ref: 'Contenedor' })
+    contenedor?: Types.ObjectId;
 }
 
 export const ProductoSchema = SchemaFactory.createForClass(Producto);

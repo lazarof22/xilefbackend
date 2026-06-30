@@ -1,4 +1,4 @@
-import { IsMongoId, IsNotEmpty, IsNumber, IsString } from "class-validator";
+import { IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 import { Types } from "mongoose";
 
 export class CreateProductoDto {
@@ -38,4 +38,12 @@ export class CreateProductoDto {
     @IsMongoId()
     @IsNotEmpty()
     estado!: Types.ObjectId;
+
+    @IsOptional()
+    @IsMongoId()
+    almacen?: Types.ObjectId;
+
+    @IsOptional()
+    @IsMongoId()
+    contenedor?: Types.ObjectId;
 }

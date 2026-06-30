@@ -6,22 +6,26 @@ import { Producto } from './schemas/producto.schema';
 import { Model, Types } from 'mongoose';
 import { Estado } from '../../nomencladores/estado/schema/estado.schema';
 import { Categoria } from '../../nomencladores/categoria/schema/categoria.schema';
+import { Almacen } from '../almacen/schema/almacen.schema';
+import { Contenedor } from '../contenedor/schema/contenedor.schema';
 
 
 @Injectable()
 export class ProductoService {
-  constructor(@InjectModel(Producto.name) private productoModel: Model<Producto>,
+  constructor(
+    @InjectModel(Producto.name) private productoModel: Model<Producto>,
     @InjectModel(Estado.name) private estadoModel: Model<Estado>,
-    @InjectModel(Categoria.name) private categoriaModel: Model<Categoria>,) {
-
-  }
+    @InjectModel(Categoria.name) private categoriaModel: Model<Categoria>,
+    @InjectModel(Almacen.name) private almacenModel: Model<Almacen>,
+    @InjectModel(Contenedor.name) private contenedorModel: Model<Contenedor>,
+  ) { }
 
 
   //Crear un producto
   async create(
     createProductoDto: CreateProductoDto,
   ): Promise<Producto> {
-    const { codigo_producto, nombre_producto, categoria_producto, precio_compra, precio_venta, stock_inicial, stock_minimo, estado } = createProductoDto;
+    const { codigo_producto, nombre_producto, categoria_producto, precio_compra, precio_venta, stock_inicial, stock_minimo, estado, almacen, contenedor } = createProductoDto;
 
     // Validar que el producto no exista
     const existProducto = await this.productoModel.findOne({
@@ -48,6 +52,26 @@ export class ProductoService {
       throw new NotFoundException('La categoría no existe');
     }
 
+    if (almacen) {
+      if (!Types.ObjectId.isValid(almacen)) {
+        throw new BadRequestException('El ID del almacén no es válido');
+      }
+      const almacenExist = await this.almacenModel.findById(almacen);
+      if (!almacenExist) {
+        throw new NotFoundException('El almacén no existe');
+      }
+    }
+
+    if (contenedor) {
+      if (!Types.ObjectId.isValid(contenedor)) {
+        throw new BadRequestException('El ID del contenedor no es válido');
+      }
+      const contenedorExist = await this.contenedorModel.findById(contenedor);
+      if (!contenedorExist) {
+        throw new NotFoundException('El contenedor no existe');
+      }
+    }
+
     // Crear el producto
     const nuevoProducto = new this.productoModel(createProductoDto);
     return nuevoProducto.save();
@@ -61,6 +85,8 @@ export class ProductoService {
       .find()
       .populate({ path: 'estado', select: 'estado' })
       .populate({ path: 'categoria_producto', select: 'nombre_categoria' })
+      .populate({ path: 'almacen', select: 'nombreAlmacen' })
+      .populate({ path: 'contenedor', select: 'nombreContenedor' })
       .sort({ createdAt: -1 })
       .exec();
   }
@@ -69,7 +95,13 @@ export class ProductoService {
 
   // Buscar un producto
   async findOne(id: string): Promise<Producto> {
-    const pro = await this.productoModel.findById(id).exec();
+    const pro = await this.productoModel
+      .findById(id)
+      .populate({ path: 'estado', select: 'estado' })
+      .populate({ path: 'categoria_producto', select: 'nombre_categoria' })
+      .populate({ path: 'almacen', select: 'nombreAlmacen' })
+      .populate({ path: 'contenedor', select: 'nombreContenedor' })
+      .exec();
     if (!pro) {
       throw new NotFoundException('No se encontró el producto');
     }
@@ -85,6 +117,28 @@ export class ProductoService {
       throw new NotFoundException('No se encontró el producto');
     }
     return updatepro;
+  }
+
+  //Asignar un contenedor a un producto
+  async asignarContenedor(productoId: string, contenedorId: string): Promise<Producto> {
+    if (!Types.ObjectId.isValid(contenedorId)) {
+      throw new BadRequestException('El ID del contenedor no es válido');
+    }
+    const contenedorExist = await this.contenedorModel.findById(contenedorId);
+    if (!contenedorExist) {
+      throw new NotFoundException('El contenedor no existe');
+    }
+
+    const producto = await this.productoModel.findById(productoId);
+    if (!producto) {
+      throw new NotFoundException('No se encontró el producto');
+    }
+
+    const almacenId = contenedorExist.almacen;
+
+    producto.almacen = almacenId;
+    producto.contenedor = new Types.ObjectId(contenedorId);
+    return producto.save();
   }
 
   //Eliminar un producto

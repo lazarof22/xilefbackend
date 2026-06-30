@@ -42,6 +42,14 @@ export class ProductoController {
     return this.productoService.update(id, updateProductoDto);
   }
 
+  @ApiOperation({ summary: 'Asignar un contenedor a un producto' })
+  @ApiResponse({ status: 201, description: 'Contenedor asignado con exito' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @Patch(':id/asignar-contenedor')
+  asignarContenedor(@Param('id') id: string, @Body('contenedor') contenedor: string) {
+    return this.productoService.asignarContenedor(id, contenedor);
+  }
+
   @ApiOperation({ summary: 'Eliminar un producto' })
   @ApiResponse({ status: 201, description: 'Producto eliminado con exito' })
   @ApiResponse({ status: 400, description: 'Bad request' })

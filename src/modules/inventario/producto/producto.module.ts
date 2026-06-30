@@ -5,17 +5,20 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Producto, ProductoSchema } from './schemas/producto.schema';
 import { Estado, EstadoSchema } from 'src/modules/nomencladores/estado/schema/estado.schema';
 import { Categoria, CategoriaSchema } from 'src/modules/nomencladores/categoria/schema/categoria.schema';
+import { Almacen, AlmacenSchema } from '../almacen/schema/almacen.schema';
+import { Contenedor, ContenedorSchema } from '../contenedor/schema/contenedor.schema';
 
 @Module({
   controllers: [ProductoController],
   providers: [ProductoService],
 
-  imports: [MongooseModule.forFeature([{
-    name: Producto.name,
-    schema: ProductoSchema,
-  },
-  { name: Estado.name, schema: EstadoSchema },
-  { name: Categoria.name, schema: CategoriaSchema },]),],
+  imports: [MongooseModule.forFeature([
+    { name: Producto.name, schema: ProductoSchema },
+    { name: Estado.name, schema: EstadoSchema },
+    { name: Categoria.name, schema: CategoriaSchema },
+    { name: Almacen.name, schema: AlmacenSchema },
+    { name: Contenedor.name, schema: ContenedorSchema },
+  ])],
   exports: [MongooseModule],
 })
 export class ProductoModule { }
