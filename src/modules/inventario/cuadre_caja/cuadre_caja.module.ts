@@ -8,16 +8,16 @@ import { Venta, VentaSchema } from '../../venta/venta/schema/venta.schema';
 import { Pago, PagoSchema } from '../../venta/pago/schema/pago.schema';
 
 @Module({
-    controllers: [CuadreCajaController],
-    providers: [CuadreCajaService],
-    imports: [
-        MongooseModule.forFeature([
-            { name: CuadreCaja.name, schema: CuadreCajaSchema },
-            { name: Usuario.name, schema: UsuarioSchema },
-            { name: Venta.name, schema: VentaSchema },
-            { name: Pago.name, schema: PagoSchema },
-        ]),
-    ],
-    exports: [MongooseModule],
+  controllers: [CuadreCajaController],
+  providers: [CuadreCajaService],
+  imports: [
+    MongooseModule.forFeature([
+      { name: CuadreCaja.name, schema: CuadreCajaSchema },
+      { name: Usuario.name, schema: UsuarioSchema },
+      { name: Venta.name, schema: VentaSchema },
+      { name: Pago.name, schema: PagoSchema },
+    ]),
+  ],
+  exports: [MongooseModule],
 })
-export class CuadreCajaModule { }
+export class CuadreCajaModule {}
