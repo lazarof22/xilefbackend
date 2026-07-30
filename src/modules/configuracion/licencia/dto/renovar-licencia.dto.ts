@@ -4,17 +4,19 @@ import {
   IsNumber,
   Min,
   Max,
-  Matches,
+  IsISO8601,
+  MaxLength,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RenovarLicenciaDto {
   @ApiPropertyOptional({
-    description: 'ID fiscal de la empresa',
+    description: 'ID fiscal de la empresa. Máx 64 caracteres.',
     example: '1234567890-1',
   })
   @IsOptional()
   @IsString()
+  @MaxLength(64, { message: 'empresa_id no puede exceder 64 caracteres' })
   empresa_id?: string;
 
   @ApiPropertyOptional({
@@ -37,18 +39,26 @@ export class RenovarLicenciaDto {
   dias?: number;
 
   @ApiPropertyOptional({
-    description: 'Fecha de vencimiento deseada (ISO 8601)',
+    description: 'Fecha de vencimiento deseada (ISO 8601 estricto)',
     example: '2026-07-22',
   })
   @IsOptional()
   @IsString()
+  @IsISO8601(
+    { strict: true },
+    { message: 'fecha_vencimiento debe ser ISO 8601 válido' },
+  )
   fecha_vencimiento?: string;
 
   @ApiPropertyOptional({
-    description: 'Fecha de inicio (ISO 8601)',
+    description: 'Fecha de inicio (ISO 8601 estricto)',
     example: '2026-06-21',
   })
   @IsOptional()
   @IsString()
+  @IsISO8601(
+    { strict: true },
+    { message: 'fecha_inicio debe ser ISO 8601 válido' },
+  )
   fecha_inicio?: string;
 }

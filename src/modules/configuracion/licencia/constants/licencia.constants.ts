@@ -19,7 +19,11 @@ export const LICENCIA_DURACIONES: Record<LicenciaTipo, number> = {
 export const LICENCIA_FORMAT_REGEX =
   /^XILEF-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}$/;
 
-export const HARDWARE_FINGERPRINT_FIELDS = ['platform', 'hostname', 'cpus'] as const;
+export const HARDWARE_FINGERPRINT_FIELDS = [
+  'platform',
+  'hostname',
+  'cpus',
+] as const;
 
 export const NONCE_EXPIRATION_MS = 5 * 60 * 1000;
 
@@ -30,9 +34,23 @@ export const LICENCIA_AUDIT_ACCIONES = [
   'revocacion',
   'rechazo',
   'generacion',
+  'firma-legacy',
+  'skew',
 ] as const;
 
 export type LicenciaAuditAccion = (typeof LICENCIA_AUDIT_ACCIONES)[number];
 
 export const THROTTLE_LIMIT = 5;
 export const THROTTLE_TTL = 15 * 60 * 1000;
+
+/**
+ * version_firma = 1 → payload canónico (ordenado, JSON) con
+ *   { activa, empresa_id, fecha_inicio, fecha_vencimiento, hardware_id,
+ *     max_usuarios, revocada, tipo }.
+ * version_firma = 0 / undefined → payload legacy (pipe-separated)
+ *   empresa_id|tipo|fecha_inicio|fecha_vencimiento (back-compat).
+ */
+export const FIRMA_VERSION_ACTUAL = 1;
+export const FIRMA_VERSION_LEGACY = 0;
+
+export const NONCE_TTL_SEGUNDOS = 300;

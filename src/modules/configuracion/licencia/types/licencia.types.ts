@@ -1,4 +1,7 @@
-import { LicenciaTipo, LicenciaAuditAccion } from '../constants/licencia.constants';
+import {
+  LicenciaTipo,
+  LicenciaAuditAccion,
+} from '../constants/licencia.constants';
 
 export interface LicenciaIntegrityData {
   empresa_id: string;
@@ -54,15 +57,6 @@ export interface LicenciaRenovadaResponse {
 export interface EstadoPublicoResponse {
   valida: boolean;
   vigente: boolean;
-  dias_restantes: number;
-  tipo: string | null;
-  empresa: string | null;
-  empresa_id: string | null;
-  fecha_inicio: Date | null;
-  fecha_vencimiento: Date | null;
-  max_usuarios: number;
-  activa: boolean;
-  revocada: boolean;
 }
 
 export interface AuthenticatedRequest {

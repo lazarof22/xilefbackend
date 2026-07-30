@@ -5,8 +5,8 @@ export type AuditoriaLicenciaDocument = HydratedDocument<AuditoriaLicencia>;
 
 @Schema({ timestamps: true, collection: 'auditoria_licencias' })
 export class AuditoriaLicencia {
-  @Prop({ type: Types.ObjectId, ref: 'Licencia', required: true })
-  licencia_id: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Licencia' })
+  licencia_id?: Types.ObjectId;
 
   @Prop({
     required: true,
@@ -17,6 +17,8 @@ export class AuditoriaLicencia {
       'revocacion',
       'rechazo',
       'generacion',
+      'firma-legacy',
+      'skew',
     ],
   })
   accion: string;

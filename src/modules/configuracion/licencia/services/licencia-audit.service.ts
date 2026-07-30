@@ -1,28 +1,38 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import {
   AuditoriaLicencia,
   AuditoriaLicenciaDocument,
 } from '../schemas/auditoria-licencia.schema';
-import { Types } from 'mongoose';
+
+export interface AuditQueryParams {
+  limit?: number;
+  offset?: number;
+  empresa_id?: string;
+  accion?: string;
+}
 
 @Injectable()
 export class LicenciaAuditService {
+  private static readonly MAX_LIMIT = 100;
+  private static readonly DEFAULT_LIMIT = 100;
+
   constructor(
     @InjectModel(AuditoriaLicencia.name)
     private readonly auditoriaModel: Model<AuditoriaLicenciaDocument>,
   ) {}
 
   async logAccion(params: {
-    licencia_id: Types.ObjectId;
+    licencia_id?: Types.ObjectId;
     accion: string;
     empresa_id?: string;
-    detalles?: Record<string, any>;
+    detalles?: Record<string, unknown>;
     exitoso: boolean;
     error?: string;
     ip_origen?: string;
     user_agent?: string;
+    motivo?: string;
   }): Promise<void> {
     try {
       await this.auditoriaModel.create({
@@ -40,7 +50,9 @@ export class LicenciaAuditService {
     }
   }
 
-  async getAuditoriaPorLicencia(licenciaId: Types.ObjectId): Promise<AuditoriaLicenciaDocument[]> {
+  async getAuditoriaPorLicencia(
+    licenciaId: Types.ObjectId,
+  ): Promise<AuditoriaLicenciaDocument[]> {
     return this.auditoriaModel
       .find({ licencia_id: licenciaId })
       .sort({ createdAt: -1 })
@@ -48,10 +60,29 @@ export class LicenciaAuditService {
       .exec();
   }
 
-  async getTodasAuditorias(limit = 100): Promise<AuditoriaLicenciaDocument[]> {
+  /**
+   * Lista auditorías con paginación y filtros opcionales.
+   * `limit` se acota a 100 máximo (default 100); `offset` default 0.
+   * Filtros opcionales por `empresa_id` y `accion`.
+   */
+  async getTodasAuditorias(
+    params: AuditQueryParams = {},
+  ): Promise<AuditoriaLicenciaDocument[]> {
+    const limit = Math.max(
+      1,
+      Math.min(
+        LicenciaAuditService.MAX_LIMIT,
+        params.limit ?? LicenciaAuditService.DEFAULT_LIMIT,
+      ),
+    );
+    const offset = Math.max(0, params.offset ?? 0);
+    const filter: Record<string, unknown> = {};
+    if (params.empresa_id) filter.empresa_id = params.empresa_id;
+    if (params.accion) filter.accion = params.accion;
     return this.auditoriaModel
-      .find()
+      .find(filter)
       .sort({ createdAt: -1 })
+      .skip(offset)
       .limit(limit)
       .lean()
       .exec();

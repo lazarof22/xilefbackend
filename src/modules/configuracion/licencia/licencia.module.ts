@@ -9,6 +9,7 @@ import {
   AuditoriaLicencia,
   AuditoriaLicenciaSchema,
 } from './schemas/auditoria-licencia.schema';
+import { NonceUsado, NonceUsadoSchema } from './schemas/nonce-usado.schema';
 import { LicenciaCryptoService } from './services/licencia-crypto.service';
 import { LicenciaGeneratorService } from './services/licencia-generator.service';
 import { LicenciaValidatorService } from './services/licencia-validator.service';
@@ -22,6 +23,7 @@ import { LicenciaValidator } from './types/licencia-validator.interface';
     MongooseModule.forFeature([
       { name: Licencia.name, schema: LicenciaSchema },
       { name: AuditoriaLicencia.name, schema: AuditoriaLicenciaSchema },
+      { name: NonceUsado.name, schema: NonceUsadoSchema },
     ]),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([

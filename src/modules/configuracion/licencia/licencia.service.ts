@@ -3,10 +3,10 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import * as crypto from 'crypto';
+import { Model, Types } from 'mongoose';
 import { Licencia, LicenciaDocument } from './schemas/licencia.schema';
 import { LicenciaCryptoService } from './services/licencia-crypto.service';
 import { LicenciaGeneratorService } from './services/licencia-generator.service';
@@ -15,7 +15,7 @@ import { LicenciaValidator } from './types/licencia-validator.interface';
 import { ActivarLicenciaDto } from './dto/activar-licencia.dto';
 import { GenerarLicenciaDto } from './dto/generar-licencia.dto';
 import { RenovarLicenciaDto } from './dto/renovar-licencia.dto';
-import { LicenciaTipo } from './constants/licencia.constants';
+import { FIRMA_VERSION_ACTUAL } from './constants/licencia.constants';
 import {
   LicenciaGeneradaResponse,
   LicenciaActivadaResponse,
@@ -24,6 +24,16 @@ import {
   EstadoPublicoResponse,
 } from './types/licencia.types';
 import type { AuditoriaLicenciaDocument } from './schemas/auditoria-licencia.schema';
+
+type RechazoMotivo =
+  | 'formato'
+  | 'nonce-replay'
+  | 'no-existe'
+  | 'revocada'
+  | 'expirada'
+  | 'integridad'
+  | 'hardware-mismatch'
+  | 'empresa-mismatch';
 
 @Injectable()
 export class LicenciaService {
@@ -36,7 +46,9 @@ export class LicenciaService {
     private readonly auditService: LicenciaAuditService,
   ) {}
 
-  async generateLicencia(dto: GenerarLicenciaDto): Promise<LicenciaGeneradaResponse> {
+  async generateLicencia(
+    dto: GenerarLicenciaDto,
+  ): Promise<LicenciaGeneradaResponse> {
     const existing = await this.licenciaModel.findOne({
       empresa_id: dto.empresa_id,
     });
@@ -53,10 +65,7 @@ export class LicenciaService {
         })();
     const fechaVencimiento = dto.fecha_vencimiento
       ? new Date(dto.fecha_vencimiento)
-      : this.generatorService.calculateExpiryDate(
-          dto.tipo,
-          dto.duracion_dias,
-        );
+      : this.generatorService.calculateExpiryDate(dto.tipo, dto.duracion_dias);
 
     if (fechaVencimiento <= fechaInicio) {
       throw new BadRequestException(
@@ -91,11 +100,17 @@ export class LicenciaService {
     const claveEncriptada = this.cryptoService.encryptAES256GCM(clave);
     const claveHash = this.cryptoService.generateSHA256Hash(clave);
 
+    // Payload canónico v1: cubre empresa_id, tipo, fechas, max_usuarios,
+    // hardware_id (vacío al generar, se re-firma en activar), activa, revocada.
     const firmaPayload = this.cryptoService.buildIntegrityPayload({
       empresa_id: dto.empresa_id,
       tipo: dto.tipo,
       fecha_inicio: fechaInicio,
       fecha_vencimiento: fechaVencimiento,
+      max_usuarios: dto.max_usuarios ?? 0,
+      hardware_id: '',
+      activa: true,
+      revocada: false,
     });
     const firmaHmac = this.cryptoService.signHMAC(firmaPayload);
 
@@ -108,11 +123,13 @@ export class LicenciaService {
       fecha_inicio: fechaInicio,
       fecha_vencimiento: fechaVencimiento,
       activa: true,
-      dias_restantes: this.generatorService.calculateRemainingDays(
-        fechaVencimiento,
-      ),
+      dias_restantes:
+        this.generatorService.calculateRemainingDays(fechaVencimiento),
       max_usuarios: dto.max_usuarios ?? 0,
+      hardware_id: '',
       firma_hmac: firmaHmac,
+      version_firma: FIRMA_VERSION_ACTUAL,
+      requiere_re_firma: false,
       metadata: dto.metadata ?? {},
     });
 
@@ -140,90 +157,203 @@ export class LicenciaService {
 
   async activarLicencia(
     dto: ActivarLicenciaDto,
-    ip?: string,
+    ipOrig?: string,
     userAgent?: string,
   ): Promise<LicenciaActivadaResponse> {
+    const auditRechazo = async (
+      motivo: RechazoMotivo,
+      error: string,
+      licId?: Types.ObjectId,
+      empresaId?: string,
+    ) => {
+      await this.auditService.logAccion({
+        licencia_id: licId,
+        accion: 'rechazo',
+        empresa_id: empresaId,
+        exitoso: false,
+        error,
+        ip_origen: ipOrig,
+        user_agent: userAgent,
+        detalles: { motivo } as Record<string, unknown>,
+      });
+    };
+
+    if (!dto.hardware_id) {
+      await auditRechazo('formato', 'hardware_id es obligatorio');
+      throw new BadRequestException('hardware_id es obligatorio');
+    }
+
     if (!this.validatorService.validateKeyFormat(dto.clave_activacion)) {
+      await auditRechazo('formato', 'Formato de clave inválido');
       throw new BadRequestException(
         'Formato de clave inválido. Debe ser XILEF-XXXX-XXXX-XXXX-XXXX',
       );
     }
 
-    if (!this.validatorService.validateNonce(dto.nonce ?? '')) {
+    const nonceOk = await this.validatorService.validateNonce(
+      dto.nonce,
+      dto.empresa_id,
+    );
+    if (!nonceOk) {
+      await auditRechazo('nonce-replay', 'Nonce inválido o ya utilizado');
       throw new BadRequestException(
         'Nonce inválido o ya utilizado. Posible ataque de replay.',
       );
     }
 
-    const claveHash = this.cryptoService.generateSHA256Hash(dto.clave_activacion);
-
+    const claveHash = this.cryptoService.generateSHA256Hash(
+      dto.clave_activacion,
+    );
     const licencia = await this.licenciaModel.findOne({
       clave_hash: claveHash,
     });
 
     if (!licencia) {
+      await auditRechazo(
+        'no-existe',
+        'Licencia no encontrada o inválida',
+        undefined,
+        dto.empresa_id,
+      );
       throw new NotFoundException('Licencia no encontrada o inválida');
     }
 
-    const empresaId = dto.empresa_id ?? licencia.empresa_id;
-    const empresaNombre = dto.empresa_nombre ?? licencia.empresa_nombre;
-
     if (licencia.revocada) {
+      await auditRechazo(
+        'revocada',
+        'Licencia revocada',
+        licencia._id,
+        licencia.empresa_id,
+      );
       throw new BadRequestException(
-        'Licencia no encontrada o inválida',
+        'Licencia revocada. Contacte al proveedor.',
       );
     }
 
-    if (this.validatorService.isExpired(licencia.fecha_vencimiento)) {
+    if (
+      this.validatorService.isExpired(
+        licencia.fecha_vencimiento,
+        licencia.ultima_verificacion_efectiva,
+      )
+    ) {
+      await auditRechazo(
+        'expirada',
+        'Licencia expirada',
+        licencia._id,
+        licencia.empresa_id,
+      );
       throw new BadRequestException(
-        'Licencia no encontrada o inválida',
+        'Licencia expirada. Contacte al proveedor.',
       );
     }
 
-    if (licencia.activa && dto.empresa_id && licencia.empresa_id !== dto.empresa_id) {
-      throw new BadRequestException(
-        'Licencia no encontrada o inválida',
+    // P1-2: no rebinding empresa_id (no-admin nunca; admin sólo por flujo
+    // separado de regeneración admin explícita, no por este endpoint).
+    if (dto.empresa_id && dto.empresa_id !== licencia.empresa_id) {
+      await auditRechazo(
+        'empresa-mismatch',
+        'Re-vinculación no permitida',
+        licencia._id,
+        dto.empresa_id,
+      );
+      throw new ForbiddenException(
+        'No se permite re-vincular la licencia a otra empresa',
       );
     }
 
-    const firmaPayload = this.cryptoService.buildIntegrityPayload({
-      empresa_id: licencia.empresa_id,
-      tipo: licencia.tipo,
-      fecha_inicio: licencia.fecha_inicio,
-      fecha_vencimiento: licencia.fecha_vencimiento,
-    });
+    const isLegacy =
+      licencia.version_firma === undefined || licencia.version_firma === 0;
+    if (isLegacy) {
+      licencia.requiere_re_firma = true;
+      await this.auditService.logAccion({
+        licencia_id: licencia._id,
+        accion: 'firma-legacy',
+        empresa_id: licencia.empresa_id,
+        exitoso: true,
+        ip_origen: ipOrig,
+        user_agent: userAgent,
+        detalles: { motivo: 'firma-legacy-en-activacion' },
+      });
+    }
 
     if (!this.validatorService.validateIntegrity(licencia)) {
-      throw new BadRequestException(
-        'Licencia no encontrada o inválida',
+      await auditRechazo(
+        'integridad',
+        'Firma HMAC inválida',
+        licencia._id,
+        licencia.empresa_id,
       );
+      throw new BadRequestException('Integridad de licencia comprometida');
     }
 
-    const hardwareId = dto.hardware_id
-      ? this.cryptoService.generateSHA256Hash(dto.hardware_id)
-      : licencia.hardware_id;
+    // P0-3: hardware_id enforcement.
+    let hardwareHash: string;
+    if (licencia.hardware_id) {
+      // Re-activación: comparar hash del dto.hardware_id con el guardado.
+      if (
+        !this.validatorService.validateHardwareId(
+          licencia.hardware_id,
+          dto.hardware_id,
+        )
+      ) {
+        await auditRechazo(
+          'hardware-mismatch',
+          'Hardware no coincide con la activación registrada',
+          licencia._id,
+          licencia.empresa_id,
+        );
+        throw new ForbiddenException(
+          'Hardware no coincide con la activación registrada',
+        );
+      }
+      hardwareHash = licencia.hardware_id;
+    } else {
+      // Primera activación: persistir el hash.
+      hardwareHash = this.cryptoService.generateSHA256Hash(dto.hardware_id);
+    }
+
+    const empresaNombre = dto.empresa_nombre ?? licencia.empresa_nombre;
 
     licencia.activa = true;
     licencia.empresa_nombre = empresaNombre;
-    licencia.empresa_id = empresaId;
-    licencia.hardware_id = hardwareId;
-    licencia.ultima_verificacion = new Date();
+    licencia.hardware_id = hardwareHash;
+    const now = Date.now();
+    const efectivaPrev = licencia.ultima_verificacion_efectiva?.getTime();
+    const efectivaNew = efectivaPrev && efectivaPrev > now ? efectivaPrev : now;
+    licencia.ultima_verificacion = new Date(now);
+    licencia.ultima_verificacion_efectiva = new Date(efectivaNew);
+    licencia.ultima_verificacion_monotonic_ms = this.monotonicMs();
     licencia.dias_restantes = this.generatorService.calculateRemainingDays(
       licencia.fecha_vencimiento,
     );
+
+    // Re-firma tras toda mutación de campos firmados. Se preserva el
+    // version_firma actual (legacy o v1) para no romper back-compat.
+    const firmaPayload = this.cryptoService.buildPayloadForVersion(
+      licencia.version_firma,
+      {
+        empresa_id: licencia.empresa_id,
+        tipo: licencia.tipo,
+        fecha_inicio: licencia.fecha_inicio,
+        fecha_vencimiento: licencia.fecha_vencimiento,
+        max_usuarios: licencia.max_usuarios,
+        hardware_id: licencia.hardware_id,
+        activa: licencia.activa,
+        revocada: licencia.revocada,
+      },
+    );
+    licencia.firma_hmac = this.cryptoService.signHMAC(firmaPayload);
 
     await licencia.save();
 
     await this.auditService.logAccion({
       licencia_id: licencia._id,
       accion: 'activacion',
-      empresa_id: empresaId,
+      empresa_id: licencia.empresa_id,
       exitoso: true,
-      ip_origen: ip,
+      ip_origen: ipOrig,
       user_agent: userAgent,
-      detalles: {
-        hardware_bound: !!dto.hardware_id,
-      },
+      detalles: { hardware_bound: !!dto.hardware_id },
     });
 
     return {
@@ -237,7 +367,11 @@ export class LicenciaService {
     };
   }
 
-  async verificarEstado(empresaId: string): Promise<EstadoLicenciaResponse> {
+  async verificarEstado(
+    empresaId: string,
+    ipOrig?: string,
+    userAgent?: string,
+  ): Promise<EstadoLicenciaResponse> {
     const licencia = await this.licenciaModel.findOne({
       empresa_id: empresaId,
       activa: true,
@@ -257,6 +391,16 @@ export class LicenciaService {
     }
 
     if (!this.validatorService.validateIntegrity(licencia)) {
+      await this.auditService.logAccion({
+        licencia_id: licencia._id,
+        accion: 'rechazo',
+        empresa_id: empresaId,
+        exitoso: false,
+        error: 'Integridad de licencia comprometida en verificación',
+        ip_origen: ipOrig,
+        user_agent: userAgent,
+        detalles: { motivo: 'integridad' },
+      });
       licencia.activa = false;
       await licencia.save();
       return {
@@ -270,16 +414,55 @@ export class LicenciaService {
       };
     }
 
-    const vigente = !this.validatorService.isExpired(licencia.fecha_vencimiento);
+    // Anti clock-skew: max(Date.now(), ultima_verificacion_efectiva).
+    const nowReal = Date.now();
+    const efectivaPrev = licencia.ultima_verificacion_efectiva?.getTime();
+    const skew = efectivaPrev !== undefined && efectivaPrev > nowReal;
+    if (skew) {
+      licencia.skew_detectado = true;
+      await this.auditService.logAccion({
+        licencia_id: licencia._id,
+        accion: 'skew',
+        empresa_id: empresaId,
+        exitoso: true,
+        ip_origen: ipOrig,
+        user_agent: userAgent,
+        detalles: { skew_ms: efectivaPrev - nowReal },
+      });
+    }
+
+    const vigente = !this.validatorService.isExpired(
+      licencia.fecha_vencimiento,
+      licencia.ultima_verificacion_efectiva,
+    );
     const diasRestantes = this.generatorService.calculateRemainingDays(
       licencia.fecha_vencimiento,
     );
 
+    const efectivaNew =
+      efectivaPrev && efectivaPrev > nowReal ? efectivaPrev : nowReal;
+    licencia.ultima_verificacion = new Date(nowReal);
+    licencia.ultima_verificacion_efectiva = new Date(efectivaNew);
+    licencia.ultima_verificacion_monotonic_ms = this.monotonicMs();
     if (licencia.dias_restantes !== diasRestantes) {
       licencia.dias_restantes = diasRestantes;
-      licencia.ultima_verificacion = new Date();
-      await licencia.save();
     }
+    // Si legacy, marcar requiere_re_firma para que un admin migre.
+    const isLegacy =
+      licencia.version_firma === undefined || licencia.version_firma === 0;
+    if (isLegacy) {
+      licencia.requiere_re_firma = true;
+      await this.auditService.logAccion({
+        licencia_id: licencia._id,
+        accion: 'firma-legacy',
+        empresa_id: empresaId,
+        exitoso: true,
+        ip_origen: ipOrig,
+        user_agent: userAgent,
+      });
+    }
+
+    await licencia.save();
 
     return {
       valida: true,
@@ -292,23 +475,67 @@ export class LicenciaService {
     };
   }
 
-  async renovarLicencia(dto: RenovarLicenciaDto): Promise<LicenciaRenovadaResponse> {
+  async renovarLicencia(
+    dto: RenovarLicenciaDto,
+    ipOrig?: string,
+    userAgent?: string,
+  ): Promise<LicenciaRenovadaResponse> {
     let licencia: LicenciaDocument | null = null;
 
     if (dto.clave_activacion) {
-      const claveHash = this.cryptoService.generateSHA256Hash(dto.clave_activacion);
+      const claveHash = this.cryptoService.generateSHA256Hash(
+        dto.clave_activacion,
+      );
       licencia = await this.licenciaModel.findOne({ clave_hash: claveHash });
     } else if (dto.empresa_id) {
-      licencia = await this.licenciaModel.findOne({ empresa_id: dto.empresa_id });
+      licencia = await this.licenciaModel.findOne({
+        empresa_id: dto.empresa_id,
+      });
     }
 
     if (!licencia) {
+      await this.auditService.logAccion({
+        accion: 'rechazo',
+        empresa_id: dto.empresa_id ?? undefined,
+        exitoso: false,
+        error: 'No se encontró licencia para esta clave o empresa',
+        ip_origen: ipOrig,
+        user_agent: userAgent,
+        detalles: { motivo: 'no-existe' },
+      });
       throw new NotFoundException(
         'No se encontró licencia para esta clave o empresa',
       );
     }
 
+    // P1-1: renovar NO resetea revocada. Si está revocada, no se puede renovar.
+    if (licencia.revocada) {
+      await this.auditService.logAccion({
+        licencia_id: licencia._id,
+        accion: 'rechazo',
+        empresa_id: licencia.empresa_id,
+        exitoso: false,
+        error: 'Licencia revocada; use regeneración admin explícita',
+        ip_origen: ipOrig,
+        user_agent: userAgent,
+        detalles: { motivo: 'revocada' },
+      });
+      throw new BadRequestException(
+        'Licencia revocada; use regeneración admin explícita',
+      );
+    }
+
     if (!this.validatorService.validateIntegrity(licencia)) {
+      await this.auditService.logAccion({
+        licencia_id: licencia._id,
+        accion: 'rechazo',
+        empresa_id: licencia.empresa_id,
+        exitoso: false,
+        error: 'Integridad de licencia comprometida. Contacte al soporte.',
+        ip_origen: ipOrig,
+        user_agent: userAgent,
+        detalles: { motivo: 'integridad' },
+      });
       throw new BadRequestException(
         'Integridad de licencia comprometida. Contacte al soporte.',
       );
@@ -322,7 +549,10 @@ export class LicenciaService {
       nuevaFechaVencimiento.setHours(23, 59, 59, 999);
       const ahora = new Date();
       diasAgregados = Math.ceil(
-        (nuevaFechaVencimiento.getTime() - (licencia.fecha_vencimiento < ahora ? ahora.getTime() : licencia.fecha_vencimiento.getTime())) /
+        (nuevaFechaVencimiento.getTime() -
+          (licencia.fecha_vencimiento < ahora
+            ? ahora.getTime()
+            : licencia.fecha_vencimiento.getTime())) /
           (1000 * 60 * 60 * 24),
       );
     } else {
@@ -342,6 +572,16 @@ export class LicenciaService {
       maxFecha.setDate(maxFecha.getDate() + 30);
       maxFecha.setHours(23, 59, 59, 999);
       if (nuevaFechaVencimiento > maxFecha) {
+        await this.auditService.logAccion({
+          licencia_id: licencia._id,
+          accion: 'rechazo',
+          empresa_id: licencia.empresa_id,
+          exitoso: false,
+          error: 'La renovación excede 30 días a partir de hoy',
+          ip_origen: ipOrig,
+          user_agent: userAgent,
+          detalles: { motivo: 'formato' },
+        });
         throw new BadRequestException(
           `La renovación no puede exceder 30 días a partir de hoy. Máximo: ${maxFecha.toISOString().split('T')[0]}`,
         );
@@ -352,22 +592,30 @@ export class LicenciaService {
       ? new Date(dto.fecha_inicio)
       : licencia.fecha_inicio;
 
-    const firmaPayload = this.cryptoService.buildIntegrityPayload({
-      empresa_id: licencia.empresa_id,
-      tipo: licencia.tipo,
-      fecha_inicio: fechaInicio,
-      fecha_vencimiento: nuevaFechaVencimiento,
-    });
+    // Re-firma con el version_firma existente (legacy o v1).
+    const firmaPayload = this.cryptoService.buildPayloadForVersion(
+      licencia.version_firma,
+      {
+        empresa_id: licencia.empresa_id,
+        tipo: licencia.tipo,
+        fecha_inicio: fechaInicio,
+        fecha_vencimiento: nuevaFechaVencimiento,
+        max_usuarios: licencia.max_usuarios,
+        hardware_id: licencia.hardware_id,
+        activa: true,
+        revocada: licencia.revocada,
+      },
+    );
     const nuevaFirma = this.cryptoService.signHMAC(firmaPayload);
 
     licencia.fecha_vencimiento = nuevaFechaVencimiento;
     licencia.fecha_inicio = fechaInicio;
     licencia.firma_hmac = nuevaFirma;
     licencia.activa = true;
-    licencia.revocada = false;
-    licencia.motivo_revocacion = undefined;
-    licencia.dias_restantes =
-      this.generatorService.calculateRemainingDays(nuevaFechaVencimiento);
+    // P1-1: NO reseteamos revocada ni motivo_revocacion.
+    licencia.dias_restantes = this.generatorService.calculateRemainingDays(
+      nuevaFechaVencimiento,
+    );
 
     await licencia.save();
 
@@ -376,7 +624,12 @@ export class LicenciaService {
       accion: 'renovacion',
       empresa_id: licencia.empresa_id,
       exitoso: true,
-      detalles: { dias_agregados: diasAgregados, nueva_fecha: nuevaFechaVencimiento },
+      ip_origen: ipOrig,
+      user_agent: userAgent,
+      detalles: {
+        dias_agregados: diasAgregados,
+        nueva_fecha: nuevaFechaVencimiento,
+      },
     });
 
     return {
@@ -394,20 +647,46 @@ export class LicenciaService {
   async revocarLicencia(
     empresaId: string,
     motivo: string,
+    ipOrig?: string,
+    userAgent?: string,
   ): Promise<{ mensaje: string }> {
     const licencia = await this.licenciaModel.findOne({
       empresa_id: empresaId,
     });
 
     if (!licencia) {
-      throw new NotFoundException(
-        'No se encontró licencia para esta empresa',
-      );
+      await this.auditService.logAccion({
+        accion: 'rechazo',
+        empresa_id: empresaId,
+        exitoso: false,
+        error: 'No se encontró licencia para esta empresa',
+        ip_origen: ipOrig,
+        user_agent: userAgent,
+        detalles: { motivo: 'no-existe' },
+      });
+      throw new NotFoundException('No se encontró licencia para esta empresa');
     }
 
     licencia.activa = false;
     licencia.revocada = true;
-    licencia.motivo_revocacion = motivo || 'Revocada por administrador';
+    if (motivo) licencia.motivo_revocacion = motivo;
+
+    // Re-firma con version_firma actual: revocada es parte del payload v1
+    // (no afecta legacy ya que revocada no está en payload legacy).
+    const firmaPayload = this.cryptoService.buildPayloadForVersion(
+      licencia.version_firma,
+      {
+        empresa_id: licencia.empresa_id,
+        tipo: licencia.tipo,
+        fecha_inicio: licencia.fecha_inicio,
+        fecha_vencimiento: licencia.fecha_vencimiento,
+        max_usuarios: licencia.max_usuarios,
+        hardware_id: licencia.hardware_id,
+        activa: licencia.activa,
+        revocada: licencia.revocada,
+      },
+    );
+    licencia.firma_hmac = this.cryptoService.signHMAC(firmaPayload);
 
     await licencia.save();
 
@@ -416,6 +695,8 @@ export class LicenciaService {
       accion: 'revocacion',
       empresa_id: empresaId,
       exitoso: true,
+      ip_origen: ipOrig,
+      user_agent: userAgent,
       detalles: { motivo },
     });
 
@@ -455,71 +736,75 @@ export class LicenciaService {
     return result.modifiedCount;
   }
 
-  async getAuditoria(): Promise<AuditoriaLicenciaDocument[]> {
-    return this.auditService.getTodasAuditorias();
+  async getAuditoria(params?: {
+    limit?: number;
+    offset?: number;
+    empresa_id?: string;
+    accion?: string;
+  }): Promise<AuditoriaLicenciaDocument[]> {
+    return this.auditService.getTodasAuditorias(params ?? {});
   }
 
-  private async timingSafeDelay(): Promise<void> {
-    const ms = crypto.randomInt(30, 80);
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  private async fixedTimeResponse<T>(fn: () => Promise<T>, minMs = 150): Promise<T> {
+  /**
+   * fixedTimeResponse envuelve una operación y garantiza que siempre tarde al
+   * menos `minMs` ms, incluso cuando lanza. El delay se ejecuta en el bloque
+   * `finally`, así que el path de error también respeta el tiempo mínimo.
+   */
+  private async fixedTimeResponse<T>(
+    fn: () => Promise<T>,
+    minMs = 150,
+  ): Promise<T> {
     const start = Date.now();
-    const result = await fn();
-    const elapsed = Date.now() - start;
-    if (elapsed < minMs) {
-      await new Promise((resolve) => setTimeout(resolve, minMs - elapsed));
+    try {
+      return await fn();
+    } finally {
+      const elapsed = Date.now() - start;
+      if (elapsed < minMs) {
+        await new Promise((resolve) => setTimeout(resolve, minMs - elapsed));
+      }
     }
-    return result;
   }
 
+  /**
+   * estadoPublico: endpoint público (sin auth). Responde SOLO `{ valida, vigente }`.
+   * Anti timing-attack: envuelve TODO con fixedTimeResponse (150ms mínimo).
+   *
+   * `valida = licencia.activa && !licencia.revocada && firmaValida && vigente`.
+   */
   async estadoPublico(clave: string): Promise<EstadoPublicoResponse> {
     return this.fixedTimeResponse(async () => {
-    if (!clave) {
-      return {
-        valida: false, vigente: false, dias_restantes: 0,
-        tipo: null, empresa: null, empresa_id: null,
-        fecha_inicio: null, fecha_vencimiento: null,
-        max_usuarios: 0, activa: false, revocada: false,
-      };
-    }
-    const claveHash = this.cryptoService.generateSHA256Hash(clave);
-    const licencia = await this.licenciaModel
-      .findOne({ clave_hash: claveHash })
-      .select('-clave_activacion_encriptada -firma_hmac -hardware_id -clave_hash')
-      .lean()
-      .exec();
+      if (!clave) {
+        return { valida: false, vigente: false };
+      }
+      const claveHash = this.cryptoService.generateSHA256Hash(clave);
+      const licencia = await this.licenciaModel
+        .findOne({ clave_hash: claveHash })
+        .select(
+          '+firma_hmac +activa +revocada +fecha_vencimiento +hardware_id +max_usuarios +ultima_verificacion_efectiva +version_firma',
+        )
+        .lean();
 
-    if (!licencia || licencia.revocada) {
-      return {
-        valida: false, vigente: false, dias_restantes: 0,
-        tipo: licencia?.tipo || null,
-        empresa: licencia?.empresa_nombre || null,
-        empresa_id: licencia?.empresa_id || null,
-        fecha_inicio: licencia?.fecha_inicio || null,
-        fecha_vencimiento: licencia?.fecha_vencimiento || null,
-        max_usuarios: licencia?.max_usuarios || 0,
-        activa: false, revocada: licencia?.revocada || false,
-      };
-    }
-    const ahora = new Date();
-    const vigente = licencia.fecha_vencimiento >= ahora;
-    const diasRestantes = Math.max(0, Math.ceil(
-      (licencia.fecha_vencimiento.getTime() - ahora.getTime()) / (1000 * 60 * 60 * 24),
-    ));
-    return {
-      valida: true, vigente,
-      dias_restantes: diasRestantes,
-      tipo: licencia.tipo,
-      empresa: licencia.empresa_nombre,
-      empresa_id: licencia.empresa_id,
-      fecha_inicio: licencia.fecha_inicio,
-      fecha_vencimiento: licencia.fecha_vencimiento,
-      max_usuarios: licencia.max_usuarios,
-      activa: licencia.activa,
-      revocada: false,
-    };
+      if (!licencia) {
+        return { valida: false, vigente: false };
+      }
+
+      const firmaValida = this.validatorService.validateIntegrity(licencia);
+      if (!firmaValida) {
+        return { valida: false, vigente: false };
+      }
+
+      const vigente = !this.validatorService.isExpired(
+        licencia.fecha_vencimiento,
+        (licencia as { ultima_verificacion_efectiva?: Date })
+          .ultima_verificacion_efectiva,
+      );
+      const valida =
+        licencia.activa && !licencia.revocada && firmaValida && vigente;
+      return { valida, vigente };
     });
+  }
+
+  private monotonicMs(): number {
+    return Number(process.hrtime.bigint()) / 1_000_000;
   }
 }

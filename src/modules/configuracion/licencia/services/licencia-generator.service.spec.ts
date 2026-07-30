@@ -25,18 +25,36 @@ describe('LicenciaGeneratorService', () => {
         'suscripcion_anual',
         new Date('2025-12-31'),
       );
-      expect(key).toMatch(/^XILEF-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}$/);
+      expect(key).toMatch(
+        /^XILEF-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}$/,
+      );
     });
 
     it('should generate different keys for different empresas', () => {
-      const key1 = service.generateLicenciaKey('EMP-001', 'perpetua', new Date('2099-01-01'));
-      const key2 = service.generateLicenciaKey('EMP-002', 'perpetua', new Date('2099-01-01'));
+      const key1 = service.generateLicenciaKey(
+        'EMP-001',
+        'perpetua',
+        new Date('2099-01-01'),
+      );
+      const key2 = service.generateLicenciaKey(
+        'EMP-002',
+        'perpetua',
+        new Date('2099-01-01'),
+      );
       expect(key1).not.toBe(key2);
     });
 
     it('should generate different keys for same empresa with different dates', () => {
-      const key1 = service.generateLicenciaKey('EMP-001', 'trial', new Date('2025-06-01'));
-      const key2 = service.generateLicenciaKey('EMP-001', 'trial', new Date('2025-06-02'));
+      const key1 = service.generateLicenciaKey(
+        'EMP-001',
+        'trial',
+        new Date('2025-06-01'),
+      );
+      const key2 = service.generateLicenciaKey(
+        'EMP-001',
+        'trial',
+        new Date('2025-06-02'),
+      );
       expect(key1).not.toBe(key2);
     });
   });

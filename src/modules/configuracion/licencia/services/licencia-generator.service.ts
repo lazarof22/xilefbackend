@@ -1,16 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { LicenciaCryptoService } from './licencia-crypto.service';
-import {
-  LICENCIA_PREFIX,
-  LicenciaTipo,
-} from '../constants/licencia.constants';
+import { LICENCIA_PREFIX, LicenciaTipo } from '../constants/licencia.constants';
 
 @Injectable()
 export class LicenciaGeneratorService {
   constructor(private readonly cryptoService: LicenciaCryptoService) {}
 
-  generateLicenciaKey(empresaId: string, tipo: LicenciaTipo, fechaVencimiento: Date): string {
+  generateLicenciaKey(
+    empresaId: string,
+    tipo: LicenciaTipo,
+    fechaVencimiento: Date,
+  ): string {
     const randomPart = crypto.randomBytes(8).toString('hex');
     const data = `${empresaId}|${tipo}|${fechaVencimiento.toISOString()}|${randomPart}`;
     const hash = this.cryptoService
