@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import {
@@ -17,6 +17,7 @@ export interface AuditQueryParams {
 export class LicenciaAuditService {
   private static readonly MAX_LIMIT = 100;
   private static readonly DEFAULT_LIMIT = 100;
+  private readonly logger = new Logger(LicenciaAuditService.name);
 
   constructor(
     @InjectModel(AuditoriaLicencia.name)
@@ -45,7 +46,8 @@ export class LicenciaAuditService {
         ip_origen: params.ip_origen ?? undefined,
         user_agent: params.user_agent ?? undefined,
       });
-    } catch {
+    } catch (error) {
+      this.logger.error('Fallo al registrar auditoría de licencia', error);
       // Fail silently - audit should never break main flow
     }
   }

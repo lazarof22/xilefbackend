@@ -10,7 +10,7 @@ export type NonceUsadoDocument = HydratedDocument<NonceUsado>;
  */
 @Schema({ timestamps: true, collection: 'nonces_usados' })
 export class NonceUsado {
-  @Prop({ required: true, unique: true, maxlength: 128 })
+  @Prop({ required: true, maxlength: 128 })
   nonce: string;
 
   @Prop()
@@ -22,4 +22,4 @@ export class NonceUsado {
 
 export const NonceUsadoSchema = SchemaFactory.createForClass(NonceUsado);
 
-NonceUsadoSchema.index({ nonce: 1 }, { unique: true });
+NonceUsadoSchema.index({ nonce: 1, empresa_id: 1 }, { unique: true });

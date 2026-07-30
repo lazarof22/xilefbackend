@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   ConflictException,
@@ -37,6 +38,8 @@ type RechazoMotivo =
 
 @Injectable()
 export class LicenciaService {
+  private readonly logger = new Logger(LicenciaService.name);
+
   constructor(
     @InjectModel(Licencia.name)
     private readonly licenciaModel: Model<LicenciaDocument>,
@@ -180,14 +183,12 @@ export class LicenciaService {
 
     if (!dto.hardware_id) {
       await auditRechazo('formato', 'hardware_id es obligatorio');
-      throw new BadRequestException('hardware_id es obligatorio');
+      throw new BadRequestException('Licencia inválida');
     }
 
     if (!this.validatorService.validateKeyFormat(dto.clave_activacion)) {
       await auditRechazo('formato', 'Formato de clave inválido');
-      throw new BadRequestException(
-        'Formato de clave inválido. Debe ser XILEF-XXXX-XXXX-XXXX-XXXX',
-      );
+      throw new BadRequestException('Licencia inválida');
     }
 
     const nonceOk = await this.validatorService.validateNonce(
@@ -196,9 +197,7 @@ export class LicenciaService {
     );
     if (!nonceOk) {
       await auditRechazo('nonce-replay', 'Nonce inválido o ya utilizado');
-      throw new BadRequestException(
-        'Nonce inválido o ya utilizado. Posible ataque de replay.',
-      );
+      throw new BadRequestException('Licencia inválida');
     }
 
     const claveHash = this.cryptoService.generateSHA256Hash(
@@ -215,7 +214,7 @@ export class LicenciaService {
         undefined,
         dto.empresa_id,
       );
-      throw new NotFoundException('Licencia no encontrada o inválida');
+      throw new NotFoundException('Licencia inválida');
     }
 
     if (licencia.revocada) {
@@ -225,9 +224,7 @@ export class LicenciaService {
         licencia._id,
         licencia.empresa_id,
       );
-      throw new BadRequestException(
-        'Licencia revocada. Contacte al proveedor.',
-      );
+      throw new BadRequestException('Licencia inválida');
     }
 
     if (
@@ -242,9 +239,7 @@ export class LicenciaService {
         licencia._id,
         licencia.empresa_id,
       );
-      throw new BadRequestException(
-        'Licencia expirada. Contacte al proveedor.',
-      );
+      throw new BadRequestException('Licencia inválida');
     }
 
     // P1-2: no rebinding empresa_id (no-admin nunca; admin sólo por flujo
@@ -256,9 +251,7 @@ export class LicenciaService {
         licencia._id,
         dto.empresa_id,
       );
-      throw new ForbiddenException(
-        'No se permite re-vincular la licencia a otra empresa',
-      );
+      throw new ForbiddenException('Licencia inválida');
     }
 
     const isLegacy =
@@ -283,7 +276,7 @@ export class LicenciaService {
         licencia._id,
         licencia.empresa_id,
       );
-      throw new BadRequestException('Integridad de licencia comprometida');
+      throw new BadRequestException('Licencia inválida');
     }
 
     // P0-3: hardware_id enforcement.
@@ -302,9 +295,7 @@ export class LicenciaService {
           licencia._id,
           licencia.empresa_id,
         );
-        throw new ForbiddenException(
-          'Hardware no coincide con la activación registrada',
-        );
+        throw new ForbiddenException('Licencia inválida');
       }
       hardwareHash = licencia.hardware_id;
     } else {
@@ -402,7 +393,17 @@ export class LicenciaService {
         detalles: { motivo: 'integridad' },
       });
       licencia.activa = false;
-      await licencia.save();
+      try {
+        await licencia.save();
+      } catch (err: unknown) {
+        if ((err as { name?: string })?.name === 'VersionError') {
+          this.logger.warn(
+            'Conflicto de versión en verificarEstado (integridad), se ignora actualización',
+          );
+        } else {
+          throw err;
+        }
+      }
       return {
         valida: false,
         vigente: false,
@@ -462,7 +463,17 @@ export class LicenciaService {
       });
     }
 
-    await licencia.save();
+    try {
+      await licencia.save();
+    } catch (err: unknown) {
+      if ((err as { name?: string })?.name === 'VersionError') {
+        this.logger.warn(
+          'Conflicto de versión en verificarEstado, se ignora actualización',
+        );
+      } else {
+        throw err;
+      }
+    }
 
     return {
       valida: true,
@@ -612,10 +623,17 @@ export class LicenciaService {
     licencia.fecha_inicio = fechaInicio;
     licencia.firma_hmac = nuevaFirma;
     licencia.activa = true;
-    // P1-1: NO reseteamos revocada ni motivo_revocacion.
     licencia.dias_restantes = this.generatorService.calculateRemainingDays(
       nuevaFechaVencimiento,
     );
+
+    const now = Date.now();
+    const efectivaPrev = licencia.ultima_verificacion_efectiva?.getTime();
+    licencia.ultima_verificacion = new Date(now);
+    licencia.ultima_verificacion_efectiva = new Date(
+      efectivaPrev && efectivaPrev > now ? efectivaPrev : now,
+    );
+    licencia.ultima_verificacion_monotonic_ms = this.monotonicMs();
 
     await licencia.save();
 
