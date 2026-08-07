@@ -2,7 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-import { JwtModule } from '@nestjs/jwt';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule } from '@nestjs/throttler';
 import * as request from 'supertest';
 import { App } from 'supertest/types';
 import { LicenciaModule } from '../src/modules/licencia/licencia.module';
@@ -15,6 +16,8 @@ describe('LicenciaController (e2e)', () => {
   beforeAll(async () => {
     process.env.LICENSE_SECRET_KEY = 'e2e-test-secret-key-minimum-32-chars!!';
     process.env.LICENSE_SIGN_SECRET = 'e2e-test-sign-secret-minimum-32-chars!';
+    process.env.LICENSE_SALT =
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -28,6 +31,8 @@ describe('LicenciaController (e2e)', () => {
           }),
           inject: [ConfigService],
         }),
+        ScheduleModule.forRoot(),
+        ThrottlerModule.forRoot([{ ttl: 60000, limit: 30 }]),
         LicenciaModule,
         AuthModule,
       ],
@@ -114,6 +119,8 @@ describe('LicenciaController (e2e)', () => {
           clave_activacion: 'XILEF-DEAD-BEEF-CAFE-BABE',
           empresa_nombre: 'Test Corp',
           empresa_id: 'E2E-002',
+          hardware_id: 'test-hardware-id-12345',
+          nonce: 'e2e-test-nonce-404',
         })
         .expect(404);
     });
