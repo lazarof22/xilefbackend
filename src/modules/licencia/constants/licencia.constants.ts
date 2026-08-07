@@ -1,5 +1,7 @@
 export const LICENCIA_PREFIX = 'XILEF';
 
+export const GRACE_PERIOD_DAYS = 7;
+
 export const LICENCIA_TIPOS = [
   'trial',
   'suscripcion_mensual',

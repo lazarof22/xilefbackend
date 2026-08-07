@@ -3,6 +3,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ClienteModule } from './modules/clientes y provedores/cliente/cliente.module';
 import { ProductoModule } from './modules/inventario/producto/producto.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -24,7 +26,7 @@ import { PaisModule } from './modules/nomencladores/pais/pais.module';
 import { ConceptoModule } from './modules/contabilidad/concepto/concepto.module';
 import { TasaDepreciacionModule } from './modules/nomencladores/tasa_depreciacion/tasa_depreciacion.module';
 import { MovimientoModule } from './modules/contabilidad/movimiento/movimiento.module';
-import { LicenciaModule } from './modules/configuracion/licencia/licencia.module';
+import { LicenciaModule } from './modules/licencia/licencia.module';
 import { EmpresaDatosModule } from './modules/configuracion/empresa-datos/empresa-datos.module';
 import { UsuariosModule } from './modules/configuracion/usuarios/usuarios.module';
 import { ImportExportModule } from './modules/configuracion/import-export/import-export.module';
@@ -58,7 +60,6 @@ import { BancoModule } from './modules/nomencladores/banco/banco.module';
 
 @Module({
   imports: [
-    //Configuracion de la Base de datos
     ConfigModule.forRoot(),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
@@ -67,6 +68,13 @@ import { BancoModule } from './modules/nomencladores/banco/banco.module';
       }),
       inject: [ConfigService],
     }),
+    ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 30,
+      },
+    ]),
     //Iniciacion de los modulos
     ActivoFijoModule,
     AlmacenModule,

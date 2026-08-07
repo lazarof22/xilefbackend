@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LicenciaController } from './licencia.controller';
 import { LicenciaService } from './licencia.service';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { LicenciaTipo } from './constants/licencia.constants';
 import { BadRequestException } from '@nestjs/common';

@@ -34,9 +34,9 @@ import {
   LicenciaAdminResponseDto,
   LicenciaUserResponseDto,
 } from './dto/licencia-response.dto';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorator/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorator/roles.decorator';
 import { LICENCIA_FORMAT_REGEX } from './constants/licencia.constants';
 import {
   FormatoClaveResponse,

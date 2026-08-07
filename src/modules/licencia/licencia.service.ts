@@ -12,6 +12,7 @@ import { Licencia, LicenciaDocument } from './schemas/licencia.schema';
 import { LicenciaCryptoService } from './services/licencia-crypto.service';
 import { LicenciaGeneratorService } from './services/licencia-generator.service';
 import { LicenciaAuditService } from './services/licencia-audit.service';
+import { LicenciaOfflineService } from './services/licencia-offline.service';
 import { LicenciaValidator } from './types/licencia-validator.interface';
 import { ActivarLicenciaDto } from './dto/activar-licencia.dto';
 import { GenerarLicenciaDto } from './dto/generar-licencia.dto';
@@ -47,6 +48,7 @@ export class LicenciaService {
     private readonly generatorService: LicenciaGeneratorService,
     private readonly validatorService: LicenciaValidator,
     private readonly auditService: LicenciaAuditService,
+    private readonly offlineService: LicenciaOfflineService,
   ) {}
 
   async generateLicencia(
@@ -143,6 +145,8 @@ export class LicenciaService {
       exitoso: true,
       detalles: { tipo: dto.tipo, clave_hash: claveHash },
     });
+
+    await this.offlineService.syncFromDb(licencia);
 
     return {
       mensaje: 'Licencia generada exitosamente',
@@ -347,6 +351,8 @@ export class LicenciaService {
       detalles: { hardware_bound: !!dto.hardware_id },
     });
 
+    await this.offlineService.syncFromDb(licencia);
+
     return {
       mensaje: 'Licencia activada exitosamente',
       valida: true,
@@ -359,6 +365,41 @@ export class LicenciaService {
   }
 
   async verificarEstado(
+    empresaId: string,
+    ipOrig?: string,
+    userAgent?: string,
+  ): Promise<EstadoLicenciaResponse> {
+    try {
+      return await this.verificarEstadoDesdeDb(empresaId, ipOrig, userAgent);
+    } catch (error) {
+      this.logger.warn(
+        `Fallo de base de datos en verificarEstado, usando .lic offline: ${(error as Error).message}`,
+      );
+      const result = await this.offlineService.isOfflineLicenseValidWithGrace();
+      if (!result || !result.valida) {
+        return {
+          valida: false,
+          vigente: false,
+          dias_restantes: 0,
+          tipo: null,
+          empresa: null,
+          fecha_vencimiento: null,
+          max_usuarios: 0,
+        };
+      }
+      return {
+        valida: true,
+        vigente: true,
+        dias_restantes: result.diasRestantes,
+        tipo: result.data!.tipo,
+        empresa: result.data!.empresa_nombre,
+        fecha_vencimiento: new Date(result.data!.fecha_vencimiento),
+        max_usuarios: result.data!.max_usuarios,
+      };
+    }
+  }
+
+  private async verificarEstadoDesdeDb(
     empresaId: string,
     ipOrig?: string,
     userAgent?: string,
@@ -650,6 +691,8 @@ export class LicenciaService {
       },
     });
 
+    await this.offlineService.syncFromDb(licencia);
+
     return {
       mensaje: 'Licencia renovada exitosamente',
       licencia: {
@@ -717,6 +760,8 @@ export class LicenciaService {
       user_agent: userAgent,
       detalles: { motivo },
     });
+
+    await this.offlineService.deleteLicenseFile();
 
     return { mensaje: 'Licencia revocada exitosamente' };
   }

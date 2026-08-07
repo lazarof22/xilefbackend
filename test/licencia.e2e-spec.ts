@@ -2,19 +2,22 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-import { JwtModule } from '@nestjs/jwt';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule } from '@nestjs/throttler';
 import * as request from 'supertest';
 import { App } from 'supertest/types';
-import { LicenciaModule } from '../src/modules/configuracion/licencia/licencia.module';
+import { LicenciaModule } from '../src/modules/licencia/licencia.module';
 import { AuthModule } from '../src/modules/auth/auth.module';
 
 describe('LicenciaController (e2e)', () => {
   let app: INestApplication<App>;
-  let generatedKey = '';
+  const generatedKey = '';
 
   beforeAll(async () => {
     process.env.LICENSE_SECRET_KEY = 'e2e-test-secret-key-minimum-32-chars!!';
     process.env.LICENSE_SIGN_SECRET = 'e2e-test-sign-secret-minimum-32-chars!';
+    process.env.LICENSE_SALT =
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -22,10 +25,14 @@ describe('LicenciaController (e2e)', () => {
         MongooseModule.forRootAsync({
           imports: [ConfigModule],
           useFactory: async (configService: ConfigService) => ({
-            uri: configService.get<string>('MONGODB_URI') || 'mongodb://localhost:27017/xilef_test',
+            uri:
+              configService.get<string>('MONGODB_URI') ||
+              'mongodb://localhost:27017/xilef_test',
           }),
           inject: [ConfigService],
         }),
+        ScheduleModule.forRoot(),
+        ThrottlerModule.forRoot([{ ttl: 60000, limit: 30 }]),
         LicenciaModule,
         AuthModule,
       ],
@@ -112,6 +119,8 @@ describe('LicenciaController (e2e)', () => {
           clave_activacion: 'XILEF-DEAD-BEEF-CAFE-BABE',
           empresa_nombre: 'Test Corp',
           empresa_id: 'E2E-002',
+          hardware_id: 'test-hardware-id-12345',
+          nonce: 'e2e-test-nonce-404',
         })
         .expect(404);
     });
@@ -122,9 +131,7 @@ describe('LicenciaController (e2e)', () => {
   // ═══════════════════════════════════════════════════════════════
   describe('GET /licencia/estado', () => {
     it('should return 401 without authorization token', () => {
-      return request(app.getHttpServer())
-        .get('/licencia/estado')
-        .expect(401);
+      return request(app.getHttpServer()).get('/licencia/estado').expect(401);
     });
   });
 
@@ -163,9 +170,7 @@ describe('LicenciaController (e2e)', () => {
     });
 
     it('GET /licencia should return 401 without auth', () => {
-      return request(app.getHttpServer())
-        .get('/licencia')
-        .expect(401);
+      return request(app.getHttpServer()).get('/licencia').expect(401);
     });
 
     it('GET /licencia/admin/auditoria should return 401 without auth', () => {
