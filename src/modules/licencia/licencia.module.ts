@@ -15,6 +15,7 @@ import { LicenciaGeneratorService } from './services/licencia-generator.service'
 import { LicenciaValidatorService } from './services/licencia-validator.service';
 import { LicenciaAuditService } from './services/licencia-audit.service';
 import { LicenciaCronService } from './services/licencia-cron.service';
+import { LicenciaOfflineService } from './services/licencia-offline.service';
 import { LicenciaGuard } from './guards/licencia.guard';
 import { LicenciaValidator } from './types/licencia-validator.interface';
 
@@ -25,13 +26,8 @@ import { LicenciaValidator } from './types/licencia-validator.interface';
       { name: AuditoriaLicencia.name, schema: AuditoriaLicenciaSchema },
       { name: NonceUsado.name, schema: NonceUsadoSchema },
     ]),
-    ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 30,
-      },
-    ]),
+    ScheduleModule,
+    ThrottlerModule,
   ],
   controllers: [LicenciaController],
   providers: [
@@ -41,8 +37,9 @@ import { LicenciaValidator } from './types/licencia-validator.interface';
     { provide: LicenciaValidator, useClass: LicenciaValidatorService },
     LicenciaAuditService,
     LicenciaCronService,
+    LicenciaOfflineService,
     LicenciaGuard,
   ],
-  exports: [LicenciaService, LicenciaGuard],
+  exports: [LicenciaService, LicenciaOfflineService, LicenciaGuard],
 })
 export class LicenciaModule {}

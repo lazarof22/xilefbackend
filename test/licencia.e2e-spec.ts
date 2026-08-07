@@ -5,12 +5,12 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import * as request from 'supertest';
 import { App } from 'supertest/types';
-import { LicenciaModule } from '../src/modules/configuracion/licencia/licencia.module';
+import { LicenciaModule } from '../src/modules/licencia/licencia.module';
 import { AuthModule } from '../src/modules/auth/auth.module';
 
 describe('LicenciaController (e2e)', () => {
   let app: INestApplication<App>;
-  let generatedKey = '';
+  const generatedKey = '';
 
   beforeAll(async () => {
     process.env.LICENSE_SECRET_KEY = 'e2e-test-secret-key-minimum-32-chars!!';
@@ -22,7 +22,9 @@ describe('LicenciaController (e2e)', () => {
         MongooseModule.forRootAsync({
           imports: [ConfigModule],
           useFactory: async (configService: ConfigService) => ({
-            uri: configService.get<string>('MONGODB_URI') || 'mongodb://localhost:27017/xilef_test',
+            uri:
+              configService.get<string>('MONGODB_URI') ||
+              'mongodb://localhost:27017/xilef_test',
           }),
           inject: [ConfigService],
         }),
@@ -122,9 +124,7 @@ describe('LicenciaController (e2e)', () => {
   // ═══════════════════════════════════════════════════════════════
   describe('GET /licencia/estado', () => {
     it('should return 401 without authorization token', () => {
-      return request(app.getHttpServer())
-        .get('/licencia/estado')
-        .expect(401);
+      return request(app.getHttpServer()).get('/licencia/estado').expect(401);
     });
   });
 
@@ -163,9 +163,7 @@ describe('LicenciaController (e2e)', () => {
     });
 
     it('GET /licencia should return 401 without auth', () => {
-      return request(app.getHttpServer())
-        .get('/licencia')
-        .expect(401);
+      return request(app.getHttpServer()).get('/licencia').expect(401);
     });
 
     it('GET /licencia/admin/auditoria should return 401 without auth', () => {

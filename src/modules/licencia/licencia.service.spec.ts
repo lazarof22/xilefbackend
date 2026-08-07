@@ -12,6 +12,7 @@ import { LicenciaCryptoService } from './services/licencia-crypto.service';
 import { LicenciaGeneratorService } from './services/licencia-generator.service';
 import { LicenciaValidatorService } from './services/licencia-validator.service';
 import { LicenciaAuditService } from './services/licencia-audit.service';
+import { LicenciaOfflineService } from './services/licencia-offline.service';
 import { LicenciaValidator } from './types/licencia-validator.interface';
 import { AuditoriaLicencia } from './schemas/auditoria-licencia.schema';
 import { NonceUsado } from './schemas/nonce-usado.schema';
@@ -110,6 +111,31 @@ describe('LicenciaService', () => {
         LicenciaGeneratorService,
         { provide: LicenciaValidator, useClass: LicenciaValidatorService },
         LicenciaAuditService,
+        {
+          provide: LicenciaOfflineService,
+          useValue: {
+            syncFromDb: jest.fn().mockResolvedValue(undefined),
+            deleteLicenseFile: jest.fn().mockResolvedValue(undefined),
+            readLicenseFile: jest.fn().mockResolvedValue(null),
+            writeLicenseFile: jest.fn().mockResolvedValue(undefined),
+            verifySignature: jest.fn().mockReturnValue(true),
+            isOfflineLicenseValid: jest.fn().mockResolvedValue(true),
+            isOfflineLicenseValidWithGrace: jest.fn().mockResolvedValue({
+              valida: true,
+              vigente: true,
+              enPeriodoGracia: false,
+              diasRestantes: 30,
+              data: {
+                tipo: 'suscripcion_mensual',
+                empresa_nombre: 'Test',
+                fecha_vencimiento: new Date(
+                  Date.now() + 30 * 86400000,
+                ).toISOString(),
+                max_usuarios: 10,
+              },
+            }),
+          },
+        },
         { provide: getModelToken(Licencia.name), useValue: mockLicenciaModel },
         {
           provide: getModelToken(AuditoriaLicencia.name),
