@@ -35,7 +35,6 @@ import { ContenedorModule } from './modules/inventario/contenedor/contenedor.mod
 import { AlmacenModule } from './modules/inventario/almacen/almacen.module';
 import { TransferenciaModule } from './modules/inventario/transferencia/transferencia.module';
 import { EnzonaModule } from './modules/finanzas/enzona/enzona.module';
-import { BancoModule } from './modules/finanzas/banco/banco.module';
 import { CuentaCobrarModule } from './modules/finanzas/cuenta-cobrar/cuenta-cobrar.module';
 import { CuentaPagarModule } from './modules/finanzas/cuenta-pagar/cuenta-pagar.module';
 import { TransaccionModule } from './modules/finanzas/transaccion/transaccion.module';
@@ -55,6 +54,7 @@ import { TransferenciasModule } from './modules/finanzas/transferencias/transfer
 import { RedistribucionRecursosModule } from './modules/finanzas/redistribucion-recursos/redistribucion-recursos.module';
 import { TransfermovilModule } from './modules/finanzas/transfermovil/transfermovil.module';
 import { TasaCambioModule } from './modules/nomencladores/tasa-cambio/tasa-cambio.module';
+import { BancoModule } from './modules/nomencladores/banco/banco.module';
 
 @Module({
   imports: [
