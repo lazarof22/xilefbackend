@@ -9,7 +9,7 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 export class EstadoController {
   constructor(private readonly estadoService: EstadoService) { }
 
-  @ApiOperation({ summary: 'Registrar un nuevo Estado' })
+  @ApiOperation({ summary: 'Registrar un nuevo estado' })
   @ApiResponse({ status: 201, description: 'Estado registrado con exito' })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @Post()
@@ -17,7 +17,7 @@ export class EstadoController {
     return this.estadoService.create(createEstadoDto);
   }
 
-  @ApiOperation({ summary: 'Obtener todos los estado' })
+  @ApiOperation({ summary: 'Obtener todos los estados' })
   @ApiResponse({ status: 201, description: 'Estados obtenidos con exito' })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @Get()

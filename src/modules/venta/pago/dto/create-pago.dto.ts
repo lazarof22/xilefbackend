@@ -110,26 +110,14 @@ export class CreatePagoEfectivoDto extends PagoBaseDto {
 }
 
 export class CreatePagoTransferenciaDto extends PagoBaseDto {
-    @IsString()
-    @IsNotEmpty()
-    ciCliente!: string;
 
     @IsString()
     @IsNotEmpty()
-    nombreCliente!: string;
-
-    @IsString()
-    @IsNotEmpty()
-    referenciaPago!: string;
+    numeroCuenta!: string;
 
     @IsNumber()
     @IsPositive()
-    @IsOptional()
-    monto_pagar?: number;
-
-    @IsNumber()
-    @IsPositive()
-    monto_pagado!: number;
+    montoPagar!: number;
 }
 
 export class CreatePagoCreditoDto extends PagoBaseDto {

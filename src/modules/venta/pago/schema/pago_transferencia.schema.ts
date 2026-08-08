@@ -7,17 +7,20 @@ export type PagoTransferenciaDocument = HydratedDocument<PagoTransferencia>;
 
 @Schema()
 export class PagoTransferencia extends Pago {
-    @Prop({ required: true, unique: true })
+    /*@Prop({ required: true, unique: true })
     ciCliente!: string;
 
-    @Prop({ required: true })
+    /*@Prop({ required: true })
     nombreCliente!: string;
 
-    @Prop({ required: true, unique: true })
-    referenciaPago!: string;
+    /*@Prop({ required: true, unique: true })
+    referenciaPago!: string;*/
 
     @Prop()
-    monto_pagado!: number;
+    numeroCuenta!: string;
+    
+    @Prop()
+    montoPagar!: number;
 
 }
 

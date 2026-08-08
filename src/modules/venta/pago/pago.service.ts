@@ -20,12 +20,10 @@ export class PagoService {
 
   //Pago en transferencia.
   async createPagoT(createPagoTransferenciaDto: CreatePagoTransferenciaDto): Promise<PagoTransferencia> {
-    const { monto_pagado, ciCliente, nombreCliente, referenciaPago } = createPagoTransferenciaDto;
+    const { montoPagar, numeroCuenta } = createPagoTransferenciaDto;
     const nuevoPagoTransferencia = new this.pagoTransferenciaModel({
-      monto_pagado,
-      ciCliente,
-      nombreCliente,
-      referenciaPago,
+      montoPagar,
+      numeroCuenta
     });
 
     return nuevoPagoTransferencia.save();
