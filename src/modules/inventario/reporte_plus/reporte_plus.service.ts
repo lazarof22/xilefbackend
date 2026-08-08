@@ -4,7 +4,7 @@ import { Model } from 'mongoose';
 import { CreateReportePlusDto } from './dto/create-reporte_plus.dto';
 import { UpdateReportePlusDto } from './dto/update-reporte_plus.dto';
 import { ReportePlus } from './schema/reporte_plus.schema';
-import { Kardex, KardexTipo } from '../../inventario/kardex/schema/kardex.schema';
+import { Kardex, KardexTipo } from '../kardex/schema/kardex.schema';
 
 @Injectable()
 export class ReportePlusService {

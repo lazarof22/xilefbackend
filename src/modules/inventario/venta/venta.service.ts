@@ -5,7 +5,7 @@ import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateVentaDto } from './dto/update-venta.dto';
 import { Venta } from './schema/venta.schema';
 import { Cliente } from '../../clientes y provedores/cliente/schemas/cliente.schema';
-import { Producto } from '../../inventario/producto/schemas/producto.schema';
+import { Producto } from '../producto/schemas/producto.schema';
 import { Kardex } from 'src/modules/inventario/kardex/schema/kardex.schema';
 import { Pago } from '../pago/schema/pago.schema';
 import { ReportePlus } from '../reporte_plus/schema/reporte_plus.schema';

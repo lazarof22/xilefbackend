@@ -4,8 +4,8 @@ import { CuadreCajaController } from './cuadre_caja.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CuadreCaja, CuadreCajaSchema } from './schema/cuadre_caja.schema';
 import { Usuario, UsuarioSchema } from '../../auth/schemas/empleado.schema';
-import { Venta, VentaSchema } from '../../venta/venta/schema/venta.schema';
-import { Pago, PagoSchema } from '../../venta/pago/schema/pago.schema';
+import { Venta, VentaSchema } from '../venta/schema/venta.schema';
+import { Pago, PagoSchema } from '../pago/schema/pago.schema';
 
 @Module({
   controllers: [CuadreCajaController],

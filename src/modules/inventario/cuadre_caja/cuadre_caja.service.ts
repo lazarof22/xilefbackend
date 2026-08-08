@@ -8,8 +8,8 @@ import { UpdateCuadreCajaDto } from './dto/update-cuadre_caja.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { CuadreCaja } from './schema/cuadre_caja.schema';
 import { Usuario } from '../../auth/schemas/empleado.schema';
-import { Venta } from '../../venta/venta/schema/venta.schema';
-import { Pago } from '../../venta/pago/schema/pago.schema';
+import { Venta } from '../venta/schema/venta.schema';
+import { Pago } from '../pago/schema/pago.schema';
 import { Model, Types } from 'mongoose';
 
 @Injectable()
@@ -124,6 +124,25 @@ export class CuadreCajaService {
     if (!deleteCuadre) {
       throw new NotFoundException('No se encontró el cuadre de caja');
     }
+  }
+
+  async getTotalDia(fecha?: string): Promise<{ total: number }> {
+    const start = fecha ? new Date(fecha) : new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+
+    const ventas = await this.ventaModel
+      .find({ createdAt: { $gte: start, $lte: end } })
+      .lean()
+      .exec();
+
+    const total = ventas.reduce(
+      (sum, venta) => sum + (venta.subtotal_venta || 0),
+      0,
+    );
+
+    return { total };
   }
 
   async getResumenDiario(fecha?: string): Promise<any> {

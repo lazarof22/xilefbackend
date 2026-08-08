@@ -56,6 +56,20 @@ export class CuadreCajaController {
     return this.cuadreCajaService.getResumenDiario(fecha);
   }
 
+  @ApiOperation({
+    summary: 'Obtener el monto total de ventas del día',
+  })
+  @ApiResponse({ status: 200, description: 'Total obtenido con exito' })
+  @ApiQuery({
+    name: 'fecha',
+    required: false,
+    description: 'Fecha en formato YYYY-MM-DD (por defecto hoy)',
+  })
+  @Get('total-dia')
+  getTotalDia(@Query('fecha') fecha?: string) {
+    return this.cuadreCajaService.getTotalDia(fecha);
+  }
+
   @ApiOperation({ summary: 'Obtener un cuadre de caja' })
   @ApiResponse({ status: 201, description: 'Cuadre obtenido con exito' })
   @ApiResponse({ status: 400, description: 'Bad request' })

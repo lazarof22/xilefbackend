@@ -9,7 +9,7 @@ import { ClienteModule } from './modules/clientes y provedores/cliente/cliente.m
 import { ProductoModule } from './modules/inventario/producto/producto.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { KardexModule } from './modules/inventario/kardex/kardex.module';
-import { VentaModule } from './modules/venta/venta/venta.module';
+import { VentaModule } from './modules/inventario/venta/venta.module';
 import { MonedaModule } from './modules/nomencladores/moneda/moneda.module';
 import { ActivoFijoModule } from './modules/contabilidad/activoFijo/activo_fijo.module';
 import { AreaModule } from './modules/nomencladores/area/area.module';
@@ -19,7 +19,7 @@ import { GrupoActivoModule } from './modules/nomencladores/grupo_activo/grupo_ac
 import { DepartamentoModule } from './modules/nomencladores/departamento/departamento.module';
 import { CargoEmpleadoModule } from './modules/nomencladores/cargo_empleado/cargo_empleado.module';
 import { CompraModule } from './modules/compra/compra/compra.module';
-import { PagoModule } from './modules/venta/pago/pago.module';
+import { PagoModule } from './modules/inventario/pago/pago.module';
 import { EmpresaModule } from './modules/clientes y provedores/empresa/empresa.module';
 import { CuentaModule } from './modules/contabilidad/cuenta/cuenta.module';
 import { PaisModule } from './modules/nomencladores/pais/pais.module';
@@ -30,7 +30,8 @@ import { LicenciaModule } from './modules/licencia/licencia.module';
 import { EmpresaDatosModule } from './modules/configuracion/empresa-datos/empresa-datos.module';
 import { UsuariosModule } from './modules/configuracion/usuarios/usuarios.module';
 import { ImportExportModule } from './modules/configuracion/import-export/import-export.module';
-import { ReportePlusModule } from './modules/venta/reporte_plus/reporte_plus.module';
+import { ReportePlusModule } from './modules/inventario/reporte_plus/reporte_plus.module';
+import { ExtraccionModule } from './modules/inventario/extraccion/extraccion.module';
 import { CuadreCajaModule } from './modules/inventario/cuadre_caja/cuadre_caja.module';
 import { ConteoFisicoModule } from './modules/contabilidad/conteo_fisico/conteo_fisico.module';
 import { ContenedorModule } from './modules/inventario/contenedor/contenedor.module';
@@ -105,6 +106,7 @@ import { BancoModule } from './modules/nomencladores/banco/banco.module';
     TasaDepreciacionModule,
     TransferenciaModule,
     ReportePlusModule,
+    ExtraccionModule,
     ConteoFisicoModule,
     BancoModule,
     CuentaCobrarModule,

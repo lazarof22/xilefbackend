@@ -3,7 +3,7 @@ import { ReportePlusService } from './reporte_plus.service';
 import { ReportePlusController } from './reporte_plus.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ReportePlus, ReportePlusSchema } from './schema/reporte_plus.schema';
-import { Kardex, KardexSchema } from '../../inventario/kardex/schema/kardex.schema';
+import { Kardex, KardexSchema } from '../kardex/schema/kardex.schema';
 
 @Module({
   imports: [
