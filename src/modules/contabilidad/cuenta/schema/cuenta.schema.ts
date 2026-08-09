@@ -1,37 +1,32 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 
 export enum NaturalezaCuenta {
-    DEUDORA = 'deudora',
-    ACREDORA = 'acredora',
-}
-
-export enum TipoCuenta {
-    ACTIVO = 'activo',
-    PASIVO = 'pasivo',
-    GASTO = 'gasto',
+  DEUDORA = 'Deudora',
+  ACREDORA = 'Acreedora',
 }
 
 export type CuentaDocument = HydratedDocument<Cuenta>;
 
-@Schema()
+@Schema({ timestamps: true })
 export class Cuenta {
+  @Prop({ required: true, unique: true })
+  codigo!: string;
 
-    @Prop({ required: true, unique: true })
-    codigoCuenta!: string;
+  @Prop({ required: true })
+  nombre!: string;
 
-    @Prop({ required: true })
-    nombreCuenta!: string;
+  @Prop({ required: true, enum: NaturalezaCuenta })
+  naturaleza!: NaturalezaCuenta;
 
-    @Prop({ required: true, enum: TipoCuenta })
-    tipoCuenta!: TipoCuenta;
+  @Prop({ type: Types.ObjectId, ref: 'Cuenta', default: null })
+  padre?: Types.ObjectId | null;
 
-    @Prop({ required: true, enum: NaturalezaCuenta })
-    naturalezaCuenta!: NaturalezaCuenta;
+  @Prop({ required: true, type: Types.ObjectId, ref: 'Moneda' })
+  moneda!: Types.ObjectId;
 
-    @Prop({ required: true, type: Types.ObjectId, ref: 'Estado' })
-    estadoCuenta!: Types.ObjectId;
-
+  @Prop({ required: true, default: 1 })
+  nivel!: number;
 }
 
 export const CuentaSchema = SchemaFactory.createForClass(Cuenta);

@@ -7,7 +7,9 @@ import { Cuenta, CuentaSchema } from './schema/cuenta.schema';
 @Module({
   controllers: [CuentaController],
   providers: [CuentaService],
-  imports: [MongooseModule.forFeature([{ name: Cuenta.name, schema: CuentaSchema }])],
+  imports: [
+    MongooseModule.forFeature([{ name: Cuenta.name, schema: CuentaSchema }]),
+  ],
   exports: [MongooseModule],
 })
 export class CuentaModule {}

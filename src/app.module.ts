@@ -58,6 +58,13 @@ import { RedistribucionRecursosModule } from './modules/finanzas/redistribucion-
 import { TransfermovilModule } from './modules/finanzas/transfermovil/transfermovil.module';
 import { TasaCambioModule } from './modules/nomencladores/tasa-cambio/tasa-cambio.module';
 import { BancoModule } from './modules/nomencladores/banco/banco.module';
+import { FacturaModule } from './modules/factura/factura.module';
+import { AsientoModule } from './modules/contabilidad/asiento/asiento.module';
+import { CentroCostoModule } from './modules/contabilidad/centro_costo/centro-costo.module';
+import { ClasificacionIGModule } from './modules/contabilidad/clasificacion_ig/clasificacion-ig.module';
+import { ComprobanteModule } from './modules/contabilidad/comprobante/comprobante.module';
+import { ElementoGastoModule } from './modules/contabilidad/elemento_gasto/elemento-gasto.module';
+import { ReportesContablesModule } from './modules/contabilidad/reportes_contables/reportes-contables.module';
 
 @Module({
   imports: [
@@ -129,6 +136,13 @@ import { BancoModule } from './modules/nomencladores/banco/banco.module';
     RedistribucionRecursosModule,
     TransfermovilModule,
     TasaCambioModule,
+    FacturaModule,
+    AsientoModule,
+    CentroCostoModule,
+    ClasificacionIGModule,
+    ComprobanteModule,
+    ElementoGastoModule,
+    ReportesContablesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

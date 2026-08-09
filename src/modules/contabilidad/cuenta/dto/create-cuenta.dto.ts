@@ -1,33 +1,53 @@
-import { IsMongoId, IsNotEmpty, IsString, IsEnum } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { TipoCuenta, NaturalezaCuenta } from '../schema/cuenta.schema';
+import {
+  IsMongoId,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsNumber,
+  Min,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { NaturalezaCuenta } from '../schema/cuenta.schema';
 
 export class CreateCuentaDto {
+  @ApiProperty({
+    description: 'Código único de la cuenta contable (ej: 1.1.1)',
+  })
+  @IsString()
+  @IsNotEmpty()
+  codigo!: string;
 
-    @ApiProperty({ description: 'Código único de la cuenta contable' })
-    @IsString()
-    @IsNotEmpty()
-    codigoCuenta!: string;
+  @ApiProperty({ description: 'Nombre de la cuenta contable' })
+  @IsString()
+  @IsNotEmpty()
+  nombre!: string;
 
-    @ApiProperty({ description: 'Nombre de la cuenta contable' })
-    @IsString()
-    @IsNotEmpty()
-    nombreCuenta!: string;
+  @ApiProperty({
+    enum: NaturalezaCuenta,
+    description: 'Naturaleza de la cuenta',
+  })
+  @IsEnum(NaturalezaCuenta)
+  @IsNotEmpty()
+  naturaleza!: NaturalezaCuenta;
 
-    @ApiProperty({ enum: TipoCuenta, description: 'Tipo de cuenta' })
-    @IsEnum(TipoCuenta)
-    @IsNotEmpty()
-    tipoCuenta!: TipoCuenta;
+  @ApiPropertyOptional({
+    description: 'ID de la cuenta padre (jerarquía del clasificador)',
+  })
+  @IsMongoId()
+  @IsOptional()
+  padre?: string;
 
-    @ApiProperty({ enum: NaturalezaCuenta, description: 'Naturaleza de la cuenta' })
-    @IsEnum(NaturalezaCuenta)
-    @IsNotEmpty()
-    naturalezaCuenta!: NaturalezaCuenta;
+  @ApiProperty({ description: 'ID de la moneda (nomenclador)' })
+  @IsMongoId()
+  @IsNotEmpty()
+  moneda!: string;
 
-    @ApiProperty({ description: 'ID del estado' })
-    @IsMongoId()
-    @IsNotEmpty()
-    estado!: string;
+  @ApiPropertyOptional({
+    description: 'Nivel en la jerarquía (se calcula del código si no se envía)',
+  })
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  nivel?: number;
 }
-
-
