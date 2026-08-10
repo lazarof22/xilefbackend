@@ -6,25 +6,34 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ClienteModule } from './modules/clientes y provedores/cliente/cliente.module';
+import { ProveedorModule } from './modules/clientes y provedores/proveedor/proveedor.module';
 import { ProductoModule } from './modules/inventario/producto/producto.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { KardexModule } from './modules/inventario/kardex/kardex.module';
 import { VentaModule } from './modules/inventario/venta/venta.module';
 import { MonedaModule } from './modules/nomencladores/moneda/moneda.module';
+import { NaturalezaCuentaModule } from './modules/nomencladores/naturaleza-cuenta/naturaleza-cuenta.module';
 import { ActivoFijoModule } from './modules/contabilidad/activoFijo/activo_fijo.module';
 import { AreaModule } from './modules/nomencladores/area/area.module';
+import { AuditModule } from './modules/auditoria/audit.module';
 import { CategoriaModule } from './modules/nomencladores/categoria/categoria.module';
 import { EstadoModule } from './modules/nomencladores/estado/estado.module';
+import { FormaPagoModule } from './modules/nomencladores/forma-pago/forma-pago.module';
 import { GrupoActivoModule } from './modules/nomencladores/grupo_activo/grupo_activo.module';
 import { DepartamentoModule } from './modules/nomencladores/departamento/departamento.module';
 import { CargoEmpleadoModule } from './modules/nomencladores/cargo_empleado/cargo_empleado.module';
 import { CompraModule } from './modules/compra/compra/compra.module';
+import { CostosModule } from './modules/costos/costos.module';
 import { PagoModule } from './modules/inventario/pago/pago.module';
 import { EmpresaModule } from './modules/clientes y provedores/empresa/empresa.module';
 import { CuentaModule } from './modules/contabilidad/cuenta/cuenta.module';
 import { PaisModule } from './modules/nomencladores/pais/pais.module';
+import { PlanificacionModule } from './modules/planificacion/planificacion.module';
 import { ConceptoModule } from './modules/contabilidad/concepto/concepto.module';
 import { TasaDepreciacionModule } from './modules/nomencladores/tasa_depreciacion/tasa_depreciacion.module';
+import { TipoContratoModule } from './modules/nomencladores/tipo-contrato/tipo-contrato.module';
+import { TipoGastoModule } from './modules/nomencladores/tipo-gasto/tipo-gasto.module';
+import { TipoProveedorModule } from './modules/nomencladores/tipo-proveedor/tipo-proveedor.module';
 import { MovimientoModule } from './modules/contabilidad/movimiento/movimiento.module';
 import { LicenciaModule } from './modules/licencia/licencia.module';
 import { EmpresaDatosModule } from './modules/configuracion/empresa-datos/empresa-datos.module';
@@ -57,6 +66,7 @@ import { TransferenciasModule } from './modules/finanzas/transferencias/transfer
 import { RedistribucionRecursosModule } from './modules/finanzas/redistribucion-recursos/redistribucion-recursos.module';
 import { TransfermovilModule } from './modules/finanzas/transfermovil/transfermovil.module';
 import { TasaCambioModule } from './modules/nomencladores/tasa-cambio/tasa-cambio.module';
+import { UnidadMedidaModule } from './modules/nomencladores/unidad-medida/unidad-medida.module';
 import { BancoModule } from './modules/nomencladores/banco/banco.module';
 import { FacturaModule } from './modules/factura/factura.module';
 import { AsientoModule } from './modules/contabilidad/asiento/asiento.module';
@@ -87,6 +97,7 @@ import { ReportesContablesModule } from './modules/contabilidad/reportes_contabl
     ActivoFijoModule,
     AlmacenModule,
     AreaModule,
+    AuditModule,
     AuthModule,
     CategoriaModule,
     CargoEmpleadoModule,
@@ -94,23 +105,31 @@ import { ReportesContablesModule } from './modules/contabilidad/reportes_contabl
     ConceptoModule,
     ContenedorModule,
     CompraModule,
+    CostosModule,
     CuentaModule,
     DepartamentoModule,
     EmpresaModule,
     EmpresaDatosModule,
     EstadoModule,
+    FormaPagoModule,
     GrupoActivoModule,
     ImportExportModule,
     KardexModule,
     LicenciaModule,
     MonedaModule,
+    NaturalezaCuentaModule,
     PagoModule,
     PaisModule,
+    PlanificacionModule,
     ProductoModule,
+    ProveedorModule,
     UsuariosModule,
     VentaModule,
     MovimientoModule,
     TasaDepreciacionModule,
+    TipoContratoModule,
+    TipoGastoModule,
+    TipoProveedorModule,
     TransferenciaModule,
     ReportePlusModule,
     ExtraccionModule,
@@ -135,6 +154,7 @@ import { ReportesContablesModule } from './modules/contabilidad/reportes_contabl
     TransferenciasModule,
     RedistribucionRecursosModule,
     TransfermovilModule,
+    UnidadMedidaModule,
     TasaCambioModule,
     FacturaModule,
     AsientoModule,
