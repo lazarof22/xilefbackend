@@ -168,4 +168,14 @@ export class CreateCuadreCajaDto {
   @ValidateNested({ each: true })
   @Type(() => OtroMotivoDto)
   otros_motivos!: OtroMotivoDto[];
+
+  @ApiPropertyOptional({
+    description:
+      'Total de efectivo contado. Si no se envía, se calcula desde el desglose de billetes',
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'El total de efectivo debe ser un número' })
+  @Min(0, { message: 'El total de efectivo no puede ser negativo' })
+  total_efectivo?: number;
+
 }

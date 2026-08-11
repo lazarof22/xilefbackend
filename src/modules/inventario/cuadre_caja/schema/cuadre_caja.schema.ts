@@ -3,7 +3,7 @@ import { HydratedDocument, Types } from 'mongoose';
 
 export type CuadreCajaDocument = HydratedDocument<CuadreCaja>;
 
-@Schema()
+@Schema({ _id: false })
 export class DesgloseBilletes {
   @Prop({ required: true, default: 0 })
   billete5000!: number;
@@ -42,7 +42,7 @@ export class DesgloseBilletes {
   billete1!: number;
 }
 
-@Schema()
+@Schema({ _id: false })
 export class OtroMotivo {
   @Prop({ required: true })
   concepto!: string;
@@ -88,6 +88,20 @@ export class CuadreCaja {
 
   @Prop({ required: true, min: 0 })
   total_efectivo!: number;
+
+  @Prop({ required: true, min: 0, default: 0 })
+  efectivo_esperado!: number;
+
+  @Prop({ required: true, default: 0 })
+  diferencia!: number;
+
+  @Prop({
+    required: true,
+    enum: ['cuadrado', 'diferencia'],
+    default: 'cuadrado',
+  })
+  estado!: string;
+
 }
 
 export const CuadreCajaSchema = SchemaFactory.createForClass(CuadreCaja);

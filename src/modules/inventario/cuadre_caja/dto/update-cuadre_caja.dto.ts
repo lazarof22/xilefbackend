@@ -14,6 +14,7 @@ import {
   IsDateString,
   ValidateNested,
   IsArray,
+  IsString,
 } from 'class-validator';
 
 export class UpdateCuadreCajaDto extends PartialType(CreateCuadreCajaDto) {
@@ -84,4 +85,12 @@ export class UpdateCuadreCajaDto extends PartialType(CreateCuadreCajaDto) {
   @IsNumber({}, { message: 'El total de efectivo debe ser un número' })
   @Min(0, { message: 'El total de efectivo no puede ser negativo' })
   total_efectivo?: number;
+
+  @IsOptional()
+  @IsString()
+  realizadoPor?: string;
+
+  @IsOptional()
+  @IsString()
+  observaciones?: string;
 }

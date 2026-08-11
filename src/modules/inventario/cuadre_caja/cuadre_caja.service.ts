@@ -6,11 +6,11 @@ import {
 import { CreateCuadreCajaDto } from './dto/create-cuadre_caja.dto';
 import { UpdateCuadreCajaDto } from './dto/update-cuadre_caja.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { CuadreCaja } from './schema/cuadre_caja.schema';
+import { CuadreCaja, DesgloseBilletes } from './schema/cuadre_caja.schema';
 import { Usuario } from '../../auth/schemas/empleado.schema';
 import { Venta } from '../venta/schema/venta.schema';
 import { Pago } from '../pago/schema/pago.schema';
-import { Model, Types } from 'mongoose';
+import { Model, Types, UpdateQuery } from 'mongoose';
 
 @Injectable()
 export class CuadreCajaService {
@@ -33,30 +33,59 @@ export class CuadreCajaService {
       throw new NotFoundException('El empleado no existe');
     }
 
-    const totalEfectivo = this.calcularTotalDesglose(desglose_billetes);
+    const totalEfectivo =
+      createCuadreCajaDto.total_efectivo ??
+      this.calcularTotalDesglose(desglose_billetes);
+
+    const otros = createCuadreCajaDto.otros_motivos ?? [];
+    const efectivoEsperado = this.redondear(
+      (createCuadreCajaDto.total_ventas_dia || 0) +
+        (createCuadreCajaDto.recargos || 0) -
+        (createCuadreCajaDto.descuentos || 0) -
+        (createCuadreCajaDto.total_extracciones_dia || 0) -
+        (createCuadreCajaDto.valor_transferencias || 0) -
+        (createCuadreCajaDto.creditos || 0) +
+        otros.reduce(
+          (sum, m) => sum + (m.tipo === 'ingreso' ? m.monto : -m.monto),
+          0,
+        ),
+    );
+
+    const diferencia = this.redondear(totalEfectivo - efectivoEsperado);
+    const estado = Math.abs(diferencia) < 0.01 ? 'cuadrado' : 'diferencia';
+
     const nuevoCuadre = new this.cuadreCajaModel({
       ...createCuadreCajaDto,
       creditos: createCuadreCajaDto.creditos ?? 0,
-      otros_motivos: createCuadreCajaDto.otros_motivos ?? [],
+      otros_motivos: otros,
       total_efectivo: totalEfectivo,
+      efectivo_esperado: efectivoEsperado,
+      diferencia,
+      estado,
     });
     return nuevoCuadre.save();
   }
 
-  private calcularTotalDesglose(desglose: any): number {
+  private redondear(n: number): number {
+    return Math.round((n + Number.EPSILON) * 100) / 100;
+  }
+
+  private calcularTotalDesglose(
+    desglose?: Partial<DesgloseBilletes>,
+  ): number {
     return (
-      (desglose.billete5000 || 0) * 5000 +
-      (desglose.billete2000 || 0) * 2000 +
-      (desglose.billete1000 || 0) * 1000 +
-      (desglose.billete500 || 0) * 500 +
-      (desglose.billete200 || 0) * 200 +
-      (desglose.billete100 || 0) * 100 +
-      (desglose.billete50 || 0) * 50 +
-      (desglose.billete20 || 0) * 20 +
-      (desglose.billete10 || 0) * 10 +
-      (desglose.billete5 || 0) * 5 +
-      (desglose.billete3 || 0) * 3 +
-      (desglose.billete1 || 0) * 1
+      (desglose?.billete5000 || 0) * 5000 +
+      (desglose?.billete2000 || 0) * 2000 +
+      (desglose?.billete1000 || 0) * 1000 +
+      (desglose?.billete500 || 0) * 500 +
+      (desglose?.billete200 || 0) * 200 +
+      (desglose?.billete100 || 0) * 100 +
+      (desglose?.billete50 || 0) * 50 +
+      (desglose?.billete20 || 0) * 20 +
+      (desglose?.billete10 || 0) * 10 +
+      (desglose?.billete5 || 0) * 5 +
+      (desglose?.billete3 || 0) * 3 +
+      (desglose?.billete1 || 0) * 1
     );
   }
 
@@ -99,7 +128,7 @@ export class CuadreCajaService {
       if (!existe) throw new NotFoundException('El empleado no existe');
     }
 
-    const updateData: any = { ...updateCuadreCajaDto };
+    const updateData: UpdateQuery<CuadreCaja> = { ...updateCuadreCajaDto };
 
     if (updateCuadreCajaDto.desglose_billetes) {
       updateData.total_efectivo = this.calcularTotalDesglose(
@@ -138,7 +167,11 @@ export class CuadreCajaService {
       .exec();
 
     const total = ventas.reduce(
-      (sum, venta) => sum + (venta.subtotal_venta || 0),
+      (sum, venta) =>
+        sum +
+        (venta.subtotal_venta || 0) -
+        (venta.descuento_total || 0) +
+        (venta.impuesto || 0),
       0,
     );
 
@@ -153,7 +186,10 @@ export class CuadreCajaService {
 
     const ventas = await this.ventaModel
       .find({ createdAt: { $gte: start, $lte: end } })
-      .populate({ path: 'pago', select: 'metodoPago monto_pagado' })
+      .populate({
+        path: 'pago',
+        select: 'metodoPago monto_pagado montoPagar monto_pagar',
+      })
       .lean()
       .exec();
 
@@ -164,17 +200,25 @@ export class CuadreCajaService {
     let totalDescuentos = 0;
 
     for (const venta of ventas) {
-      totalVentas += venta.subtotal_venta || 0;
+      totalVentas +=
+        (venta.subtotal_venta || 0) -
+        (venta.descuento_total || 0) +
+        (venta.impuesto || 0);
       totalDescuentos += venta.descuento_total || 0;
 
-      const pago = venta.pago as any;
+      const pago = venta.pago as {
+        metodoPago?: string;
+        monto_pagado?: number;
+        montoPagar?: number;
+        monto_pagar?: number;
+      };
       if (pago) {
         if (pago.metodoPago === 'efectivo') {
           totalEfectivo += pago.monto_pagado || 0;
         } else if (pago.metodoPago === 'transferencia') {
-          totalTransferencias += pago.monto_pagado || 0;
+          totalTransferencias += pago.montoPagar ?? pago.monto_pagado ?? 0;
         } else if (pago.metodoPago === 'credito') {
-          totalCreditos += venta.subtotal_venta || 0;
+          totalCreditos += pago.monto_pagar ?? 0;
         }
       }
     }
