@@ -98,7 +98,10 @@ function normalizeIso(iso: string): string {
  * `XILEF_SIGNING_PRIVATE_KEY_PATH` (PEM PKCS#8, mode 0600) y devuelve la clave
  * pública raw base64 para embeber en las constantes del cliente.
  */
-export function runKeygen(): { publicKeyBase64: string; privateKeyPath: string } {
+export function runKeygen(): {
+  publicKeyBase64: string;
+  privateKeyPath: string;
+} {
   const privateKeyPath = getPrivateKeyPath();
   const { publicKey, privateKey } = generateEd25519Keypair();
   fs.writeFileSync(privateKeyPath, privateKeyToPkcs8Pem(privateKey), {
@@ -267,21 +270,18 @@ export function main(argv: string[]): number {
     switch (command) {
       case 'keygen': {
         const result = runKeygen();
-        // eslint-disable-next-line no-console
         console.log(JSON.stringify(result, null, 2));
         return 0;
       }
       case 'sign': {
         const input = parseJsonArg(argv[1]) as SignPayloadInput;
         const signature = signPayload(input, loadSigningPrivateKey());
-        // eslint-disable-next-line no-console
         console.log(signature);
         return 0;
       }
       case 'generar': {
         const spec = parseJsonArg(argv[1]) as GenerarSpec;
         const artifact = generarLicencia(spec, loadSigningPrivateKey());
-        // eslint-disable-next-line no-console
         console.log(JSON.stringify(artifact, null, 2));
         return 0;
       }
@@ -297,7 +297,6 @@ export function main(argv: string[]): number {
           argv[2],
           loadSigningPrivateKey(),
         );
-        // eslint-disable-next-line no-console
         console.log(JSON.stringify(updated, null, 2));
         return 0;
       }
@@ -308,12 +307,10 @@ export function main(argv: string[]): number {
           argv[2] ?? '',
           loadSigningPrivateKey(),
         );
-        // eslint-disable-next-line no-console
         console.log(JSON.stringify(updated, null, 2));
         return 0;
       }
       default: {
-        // eslint-disable-next-line no-console
         console.error(
           `Comando desconocido: "${command ?? ''}". ` +
             'Uso: keygen | sign <payload-json-or-file> | generar <empresa-json> | ' +
@@ -324,7 +321,6 @@ export function main(argv: string[]): number {
       }
     }
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error(`Error: ${(error as Error).message}`);
     return 1;
   }

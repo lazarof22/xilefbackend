@@ -109,7 +109,9 @@ describe('signing-tool — keygen', () => {
     const keyPath = path.join(tmpDir, 'private.pem');
     process.env[ENV_KEY] = keyPath;
 
-    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    const logSpy = jest
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined);
     const code = main(['keygen']);
 
     expect(code).toBe(0);
@@ -274,7 +276,9 @@ describe('signing-tool — main (integración)', () => {
 
   it('main(["sign", json]) imprime la firma hex y sale 0', () => {
     const { publicKeyBase64 } = setupKey();
-    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    const logSpy = jest
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined);
 
     const code = main([
       'sign',
@@ -317,7 +321,9 @@ describe('signing-tool — main (integración)', () => {
 
   it('main(["generar", json]) imprime el artefacto JSON y sale 0', () => {
     setupKey();
-    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    const logSpy = jest
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined);
 
     const code = main(['generar', JSON.stringify(SPEC)]);
 

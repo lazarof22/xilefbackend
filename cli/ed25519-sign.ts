@@ -1,4 +1,5 @@
 import * as crypto from 'crypto';
+import * as fs from 'fs';
 
 /**
  * Helpers criptográficos de la CLI de firma de XILEF (Ed25519).
@@ -57,7 +58,9 @@ export function publicKeyToRawBase64(publicKey: crypto.KeyObject): string {
 export function publicKeyFromRawBase64(rawBase64: string): crypto.KeyObject {
   const raw = Buffer.from(rawBase64, 'base64');
   if (raw.length !== 32) {
-    throw new Error('Clave pública Ed25519 inválida: debe ser raw base64 de 32 bytes');
+    throw new Error(
+      'Clave pública Ed25519 inválida: debe ser raw base64 de 32 bytes',
+    );
   }
   return crypto.createPublicKey({
     key: Buffer.concat([ED25519_SPKI_PREFIX, raw]),
@@ -78,7 +81,6 @@ export function loadPrivateKeyFromPem(pem: string): crypto.KeyObject {
  * El archivo vive SOLO en la máquina de XILEF (nunca en el repo).
  */
 export function loadPrivateKeyFromPath(path: string): crypto.KeyObject {
-  const fs = require('fs') as typeof import('fs');
   const pem = fs.readFileSync(path, 'utf8');
   return loadPrivateKeyFromPem(pem);
 }
