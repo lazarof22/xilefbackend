@@ -46,13 +46,45 @@ export const THROTTLE_LIMIT = 5;
 export const THROTTLE_TTL = 15 * 60 * 1000;
 
 /**
- * version_firma = 1 → payload canónico (ordenado, JSON) con
- *   { activa, empresa_id, fecha_inicio, fecha_vencimiento, hardware_id,
- *     max_usuarios, revocada, tipo }.
+ * version_firma = 2 → payload canónico v2 (ordenado, JSON, 7 campos, SIN
+ *   hardware_id): { activa, empresa_id, fecha_inicio, fecha_vencimiento,
+ *   max_usuarios, revocada, tipo }. Firmado por XILEF con Ed25519.
+ * version_firma = 1 → payload canónico v1 (8 campos, con hardware_id) — HMAC,
+ *   solo de referencia.
  * version_firma = 0 / undefined → payload legacy (pipe-separated)
  *   empresa_id|tipo|fecha_inicio|fecha_vencimiento (back-compat).
  */
-export const FIRMA_VERSION_ACTUAL = 1;
+export const FIRMA_VERSION_ACTUAL = 2;
 export const FIRMA_VERSION_LEGACY = 0;
+
+/**
+ * Campos canónicos del payload v2 (7 campos, sin hardware_id).
+ * El orden aquí es ilustrativo: la canonicalización ordena las keys en
+ * `payload-builder.ts` (`canonicalStringify`).
+ */
+export const LICENCIA_ED25519_PAYLOAD_FIELDS = [
+  'activa',
+  'empresa_id',
+  'fecha_inicio',
+  'fecha_vencimiento',
+  'max_usuarios',
+  'revocada',
+  'tipo',
+] as const;
+
+/**
+ * Clave pública Ed25519 de XILEF (raw 32 bytes, base64). Es pública y segura
+ * para distribuir. El cliente SOLO verifica; la clave privada vive únicamente
+ * en la máquina de XILEF.
+ *
+ * DEV: clave de prueba generada para desarrollo. XILEF debe regenerar el
+ * keypair de producción con `npm run sign -- keygen` y reemplazar este valor.
+ *
+ * Uso en verifyEd25519: reconstruir SPKI anteponiendo el prefijo Ed25519 fijo
+ * `302a300506032b6570032100` y cargar con
+ * `crypto.createPublicKey({ key, format: 'der', type: 'spki' })`.
+ */
+export const LICENCIA_ED25519_PUBLIC_KEY =
+  'JnoxEB42azN5d3cGoEvQPMuYB13cYWXvDBHw3VlKeU0=';
 
 export const NONCE_TTL_SEGUNDOS = 300;

@@ -163,7 +163,7 @@ describe('LicenciaService', () => {
   });
 
   describe('generateLicencia', () => {
-    it('should generate a new license (v1 firma)', async () => {
+    it('should generate a new license (firma)', async () => {
       mockLicenciaModel.findOne.mockResolvedValue(null);
 
       const result = await service.generateLicencia({
@@ -180,7 +180,7 @@ describe('LicenciaService', () => {
         string,
         unknown
       >;
-      expect(created.version_firma).toBe(1);
+      expect(created.version_firma).toBe(2);
       expect(created.requiere_re_firma).toBe(false);
       expect(created.hardware_id).toBe('');
     });
