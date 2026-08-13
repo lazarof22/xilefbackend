@@ -5,77 +5,53 @@ import {
 } from '@nestjs/common';
 import { OnModuleInit } from '@nestjs/common';
 import * as crypto from 'crypto';
+import {
+  buildEd25519Payload as buildEd25519PayloadFromBuilder,
+  buildIntegrityPayload as buildIntegrityPayloadFromBuilder,
+  buildLegacyIntegrityPayload as buildLegacyIntegrityPayloadFromBuilder,
+  buildPayloadForVersion as buildPayloadForVersionFromBuilder,
+  LicenciaPayloadFields,
+} from './payload-builder';
+import { LICENCIA_ED25519_PUBLIC_KEY } from '../constants/licencia.constants';
 
+/**
+ * Prefijo X.509 SPKI fijo de una clave pública Ed25519 (RFC 8032). Antepuesto a
+ * los 32 bytes crudos de la clave reconstruye el DER completo para cargar con
+ * `crypto.createPublicKey({ format: 'der', type: 'spki' })`.
+ */
+const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
+
+const ED25519_SIGNATURE_HEX = /^[0-9a-f]{128}$/i;
+
+/**
+ * Servicio criptográfico del cliente — VERIFY-ONLY.
+ *
+ * Tras el cutover asimétrico el backend cliente NO firma: la clave privada
+ * Ed25519 vive únicamente en la máquina de XILEF. Este servicio solo expone la
+ * verificación Ed25519 (clave pública embebida) y el hash SHA-256.
+ *
+ * Los métodos de firma HMAC / cifrado AES se conservan por ahora (limpieza
+ * diferida) pero son inalcanzables: `getKeyMaterial` lanza, de modo que no
+ * existe ruta de falsificación en el cliente.
+ */
 @Injectable()
 export class LicenciaCryptoService implements OnModuleInit {
   private readonly logger = new Logger(LicenciaCryptoService.name);
-  private SECRET_KEY: Buffer | null = null;
-  private SIGN_SECRET: string | null = null;
   private readonly AES_ALGORITHM = 'aes-256-gcm';
   private readonly HMAC_ALGORITHM = 'sha256';
   private readonly IV_LENGTH = 16;
   private readonly AUTH_TAG_LENGTH = 16;
+  private publicKey: crypto.KeyObject | null = null;
 
   onModuleInit(): void {
-    const key = process.env.LICENSE_SECRET_KEY;
-    if (!key || key.length < 32) {
-      throw new InternalServerErrorException(
-        'LICENSE_SECRET_KEY debe estar definida en .env y tener al menos 32 caracteres',
-      );
-    }
-
-    const saltB64 = process.env.LICENSE_SALT;
-    if (!saltB64) {
-      throw new InternalServerErrorException(
-        'LICENSE_SALT no definida en .env. Generar con: openssl rand -base64 32',
-      );
-    }
-    const salt = Buffer.from(saltB64, 'base64');
-    if (salt.length < 32) {
-      throw new InternalServerErrorException(
-        'LICENSE_SALT debe ser base64 de al menos 32 bytes. Generar con: openssl rand -base64 32',
-      );
-    }
-
-    const signSecret = process.env.LICENSE_SIGN_SECRET;
-    if (!signSecret || signSecret.length < 32) {
-      throw new InternalServerErrorException(
-        'LICENSE_SIGN_SECRET no definida (o demasiado corta) en .env. Debe tener al menos 32 caracteres. Generar con: openssl rand -base64 32',
-      );
-    }
-
-    this.SECRET_KEY = crypto.scryptSync(key, salt, 32);
-    this.SIGN_SECRET = signSecret;
+    // El cliente es verify-only: no requiere secretos en .env. Sin gates.
   }
 
   private getKeyMaterial(): { key: Buffer; sign: string } {
-    if (!this.SECRET_KEY || !this.SIGN_SECRET) {
-      // Fallback para escenarios de tests sin onModuleInit:
-      // se inicializan perezosamente desde env vars (con warning silencioso).
-      const key = process.env.LICENSE_SECRET_KEY;
-      if (!key || key.length < 32) {
-        throw new InternalServerErrorException(
-          'LICENSE_SECRET_KEY no inicializada',
-        );
-      }
-      const saltB64 = process.env.LICENSE_SALT;
-      if (!saltB64) {
-        throw new InternalServerErrorException('LICENSE_SALT no inicializada');
-      }
-      this.SECRET_KEY = crypto.scryptSync(
-        key,
-        Buffer.from(saltB64, 'base64'),
-        32,
-      );
-      const signSecret = process.env.LICENSE_SIGN_SECRET;
-      if (!signSecret || signSecret.length < 32) {
-        throw new InternalServerErrorException(
-          'LICENSE_SIGN_SECRET no inicializada (o demasiado corta)',
-        );
-      }
-      this.SIGN_SECRET = signSecret;
-    }
-    return { key: this.SECRET_KEY, sign: this.SIGN_SECRET };
+    throw new InternalServerErrorException(
+      'El backend cliente es verify-only: no posee material de firma. ' +
+        'La firma (Ed25519) se realiza únicamente en la CLI de XILEF.',
+    );
   }
 
   encryptAES256GCM(plaintext: string): string {
@@ -123,9 +99,8 @@ export class LicenciaCryptoService implements OnModuleInit {
   }
 
   /**
-   * Verifica firma HMAC con comparación temporal-constante.
-   * Valida longitud de buffers antes de timingSafeEqual (que requiere mismo
-   * length). Acepta solo firmas hex de 64 chars (HMAC-SHA256).
+   * Verifica firma HMAC con comparación temporal-constante. Muerto tras el
+   * cutover: `signHMAC` (y por tanto `getKeyMaterial`) lanza.
    */
   verifyHMAC(payload: string, signature: string): boolean {
     if (!signature || typeof signature !== 'string') return false;
@@ -146,48 +121,37 @@ export class LicenciaCryptoService implements OnModuleInit {
   }
 
   /**
-   * Construye el payload canónico de integridad de una licencia (versión 1).
-   *
-   * Formato: `JSON.stringify` de un objeto con keys ordenadas ascendentemente
-   * (sortKeys_ASC) y fechas normalizadas a ISO string UTC. La canonicalización
-   * garantiza que dos ocurrencias del mismo estado generen el mismo string
-   * sin importar el orden de inserción de propiedades.
-   *
-   * Campos firmados (v1):
-   *   activa, empresa_id, fecha_inicio, fecha_vencimiento, hardware_id,
-   *   max_usuarios, revocada, tipo
-   *
-   * Excluidos a propósito:
-   *   firma_hmac, dias_restantes, ultima_verificacion*,
-   *   ultima_verificacion_efectiva, skew_detectado, motivo_revocacion,
-   *   metadata, version_firma, requiere_re_firma, *_at (timestamps mongoose).
+   * Verifica una firma Ed25519 sobre `payload` con la clave pública embebida de
+   * XILEF. La firma debe ser hex de 128 caracteres (64 bytes). Cualquier firma
+   * malformada o falsa retorna `false` sin lanzar.
    */
-  buildIntegrityPayload(datos: {
-    empresa_id: string;
-    tipo: string;
-    fecha_inicio: Date;
-    fecha_vencimiento: Date;
-    max_usuarios?: number;
-    hardware_id?: string;
-    activa?: boolean;
-    revocada?: boolean;
-  }): string {
-    const payload: Record<string, unknown> = {
-      activa: datos.activa,
-      empresa_id: datos.empresa_id,
-      fecha_inicio: datos.fecha_inicio.toISOString(),
-      fecha_vencimiento: datos.fecha_vencimiento.toISOString(),
-      hardware_id: datos.hardware_id ?? '',
-      max_usuarios: datos.max_usuarios ?? 0,
-      revocada: datos.revocada ?? false,
-      tipo: datos.tipo,
-    };
-    return this.canonicalStringify(payload);
+  verifyEd25519(payload: string, signature: string): boolean {
+    if (!signature || typeof signature !== 'string') return false;
+    if (!ED25519_SIGNATURE_HEX.test(signature)) return false;
+    try {
+      return crypto.verify(
+        null,
+        Buffer.from(payload, 'utf8'),
+        this.getPublicKey(),
+        Buffer.from(signature, 'hex'),
+      );
+    } catch {
+      return false;
+    }
   }
 
   /**
-   * Payload legacy (versión 0) para back-compat con licencias existentes
-   * que no tienen `version_firma` (undefined o 0). Formato pipe-separated.
+   * Construye el payload canónico de integridad de una licencia (versión 1,
+   * 8 campos con `hardware_id`). Solo de referencia: el flujo v1 (HMAC) queda
+   * inalcanzable tras el cutover. Delegado en `payload-builder`.
+   */
+  buildIntegrityPayload(datos: LicenciaPayloadFields): string {
+    return buildIntegrityPayloadFromBuilder(datos);
+  }
+
+  /**
+   * Payload legacy (versión 0) para back-compat con licencias existentes.
+   * Formato pipe-separated. Delegado en `payload-builder`.
    */
   buildLegacyIntegrityPayload(datos: {
     empresa_id: string;
@@ -195,39 +159,43 @@ export class LicenciaCryptoService implements OnModuleInit {
     fecha_inicio: Date;
     fecha_vencimiento: Date;
   }): string {
-    return `${datos.empresa_id}|${datos.tipo}|${datos.fecha_inicio.toISOString()}|${datos.fecha_vencimiento.toISOString()}`;
+    return buildLegacyIntegrityPayloadFromBuilder(datos);
   }
 
   /**
-   * Returns true si el payload de la firma es el legacy (pipe) o el canónico.
+   * Payload canónico versión 2 (7 campos, SIN `hardware_id`), firmado por XILEF
+   * con Ed25519. Delegado en `payload-builder`.
+   */
+  buildEd25519Payload(
+    datos: Omit<LicenciaPayloadFields, 'hardware_id'>,
+  ): string {
+    return buildEd25519PayloadFromBuilder(datos);
+  }
+
+  /**
+   * Despacha según `version_firma`: v0/undefined → legacy, v1 → canónico v1,
+   * v2 → canónico v2 (Ed25519). Delegado en `payload-builder`.
    */
   buildPayloadForVersion(
     version: number | undefined,
-    datos: {
-      empresa_id: string;
-      tipo: string;
-      fecha_inicio: Date;
-      fecha_vencimiento: Date;
-      max_usuarios?: number;
-      hardware_id?: string;
-      activa?: boolean;
-      revocada?: boolean;
-    },
+    datos: LicenciaPayloadFields,
   ): string {
-    if (version === undefined || version === 0) {
-      return this.buildLegacyIntegrityPayload(datos);
-    }
-    return this.buildIntegrityPayload(datos);
-  }
-
-  private canonicalStringify(payload: Record<string, unknown>): string {
-    const keys = Object.keys(payload).sort();
-    const sorted: Record<string, unknown> = {};
-    for (const k of keys) sorted[k] = payload[k];
-    return JSON.stringify(sorted);
+    return buildPayloadForVersionFromBuilder(version, datos);
   }
 
   generateNonce(): string {
     return crypto.randomBytes(32).toString('base64url');
+  }
+
+  private getPublicKey(): crypto.KeyObject {
+    if (!this.publicKey) {
+      const raw = Buffer.from(LICENCIA_ED25519_PUBLIC_KEY, 'base64');
+      this.publicKey = crypto.createPublicKey({
+        key: Buffer.concat([ED25519_SPKI_PREFIX, raw]),
+        format: 'der',
+        type: 'spki',
+      });
+    }
+    return this.publicKey;
   }
 }

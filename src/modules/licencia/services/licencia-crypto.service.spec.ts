@@ -1,18 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LicenciaCryptoService } from './licencia-crypto.service';
 
-const TEST_SECRET_KEY = 'test-secret-key-min-32-chars-long!!';
-const TEST_SIGN_SECRET = 'test-sign-secret-min-32-chars!!!';
-const TEST_SALT_B64 = Buffer.alloc(32, 0x05).toString('base64');
+// Firma válida precalculada con la clave privada de DEV sobre el payload
+// 'test-payload-123'. La firma es pública (verificable con la clave pública
+// embebida); la clave privada NO vive en el cliente.
+const VALID_PAYLOAD = 'test-payload-123';
+const VALID_SIGNATURE =
+  '26b5beb8166c4f2ba4c9cc2c705219fa2b0b6bfab4cc324c7c8475b449537b7b' +
+  '6b898e9f1971ffcdbcfd47e44e2d2e936ca3b0744005c4a0766b0cd7d83e3f06';
 
 describe('LicenciaCryptoService', () => {
   let service: LicenciaCryptoService;
-
-  beforeAll(() => {
-    process.env.LICENSE_SECRET_KEY = TEST_SECRET_KEY;
-    process.env.LICENSE_SIGN_SECRET = TEST_SIGN_SECRET;
-    process.env.LICENSE_SALT = TEST_SALT_B64;
-  });
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -20,7 +18,7 @@ describe('LicenciaCryptoService', () => {
     }).compile();
 
     service = module.get<LicenciaCryptoService>(LicenciaCryptoService);
-    // Disparar onModuleInit manualmente como hace NestJS runtime
+    // Disparar onModuleInit manualmente como hace NestJS runtime (no-op).
     await service.onModuleInit();
   });
 
@@ -28,61 +26,59 @@ describe('LicenciaCryptoService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('onModuleInit env validation', () => {
-    it('should throw if LICENSE_SECRET_KEY is too short', () => {
+  describe('onModuleInit (verify-only: sin gates de secretos)', () => {
+    it('should NOT throw even when no secret env vars are set', () => {
       const oldKey = process.env.LICENSE_SECRET_KEY;
-      try {
-        process.env.LICENSE_SECRET_KEY = 'short';
-        expect(() => service.onModuleInit()).toThrow();
-      } finally {
-        process.env.LICENSE_SECRET_KEY = oldKey;
-      }
-    });
-
-    it('should throw if LICENSE_SALT is missing', () => {
+      const oldSign = process.env.LICENSE_SIGN_SECRET;
       const oldSalt = process.env.LICENSE_SALT;
       try {
-        delete process.env.LICENSE_SALT;
-        expect(() => service.onModuleInit()).toThrow('LICENSE_SALT');
-      } finally {
-        process.env.LICENSE_SALT = oldSalt;
-      }
-    });
-
-    it('should throw if LICENSE_SIGN_SECRET is missing or too short', () => {
-      const oldSign = process.env.LICENSE_SIGN_SECRET;
-      try {
+        delete process.env.LICENSE_SECRET_KEY;
         delete process.env.LICENSE_SIGN_SECRET;
-        expect(() => service.onModuleInit()).toThrow('LICENSE_SIGN_SECRET');
+        delete process.env.LICENSE_SALT;
+        expect(() => service.onModuleInit()).not.toThrow();
       } finally {
-        process.env.LICENSE_SIGN_SECRET = oldSign;
+        if (oldKey) process.env.LICENSE_SECRET_KEY = oldKey;
+        if (oldSign) process.env.LICENSE_SIGN_SECRET = oldSign;
+        if (oldSalt) process.env.LICENSE_SALT = oldSalt;
       }
     });
   });
 
-  describe('encryptAES256GCM / decryptAES256GCM', () => {
-    it('should encrypt and decrypt a string correctly', () => {
-      const original = 'XILEF-A1B2-C3D4-E5F6';
-      const encrypted = service.encryptAES256GCM(original);
-      expect(encrypted).toBeDefined();
-      expect(encrypted).not.toBe(original);
-
-      const decrypted = service.decryptAES256GCM(encrypted);
-      expect(decrypted).toBe(original);
+  describe('verifyEd25519', () => {
+    it('should verify a valid Ed25519 signature', () => {
+      expect(service.verifyEd25519(VALID_PAYLOAD, VALID_SIGNATURE)).toBe(true);
     });
 
-    it('should produce different ciphertexts for the same plaintext (random IV)', () => {
-      const plaintext = 'test-license-key-12345';
-      const c1 = service.encryptAES256GCM(plaintext);
-      const c2 = service.encryptAES256GCM(plaintext);
-      expect(c1).not.toBe(c2);
+    it('should reject a forged signature', () => {
+      const bogus = 'a'.repeat(128);
+      expect(service.verifyEd25519(VALID_PAYLOAD, bogus)).toBe(false);
     });
 
-    it('should throw on tampered data', () => {
-      const original = 'my-secret-key';
-      const encrypted = service.encryptAES256GCM(original);
-      const tampered = encrypted.slice(0, -5) + 'XXXXX';
-      expect(() => service.decryptAES256GCM(tampered)).toThrow();
+    it('should reject a signature over a different payload', () => {
+      expect(service.verifyEd25519('other-payload', VALID_SIGNATURE)).toBe(
+        false,
+      );
+    });
+
+    it('should reject truncated / non-hex signatures without throwing', () => {
+      expect(service.verifyEd25519(VALID_PAYLOAD, 'short')).toBe(false);
+      expect(service.verifyEd25519(VALID_PAYLOAD, '')).toBe(false);
+      expect(service.verifyEd25519(VALID_PAYLOAD, 'zz'.repeat(64))).toBe(false);
+      expect(() => service.verifyEd25519(VALID_PAYLOAD, 'short')).not.toThrow();
+    });
+  });
+
+  describe('forge-path hardening (dead-by-throw)', () => {
+    it('should throw when signHMAC is called (no client signing path)', () => {
+      expect(() => service.signHMAC('payload')).toThrow();
+    });
+
+    it('should throw when encryptAES256GCM is called (AES cleanup deferred)', () => {
+      expect(() => service.encryptAES256GCM('key')).toThrow();
+    });
+
+    it('should throw when decryptAES256GCM is called', () => {
+      expect(() => service.decryptAES256GCM('dGVzdA==')).toThrow();
     });
   });
 
@@ -101,44 +97,6 @@ describe('LicenciaCryptoService', () => {
     });
   });
 
-  describe('signHMAC / verifyHMAC', () => {
-    it('should sign and verify a payload', () => {
-      const payload = 'test-payload-123';
-      const signature = service.signHMAC(payload);
-      expect(signature).toBeDefined();
-      expect(signature.length).toBe(64); // HMAC-SHA256 hex
-      expect(service.verifyHMAC(payload, signature)).toBe(true);
-    });
-
-    it('should reject tampered payloads', () => {
-      const payload = 'original-data';
-      const signature = service.signHMAC(payload);
-      expect(service.verifyHMAC('tampered-data', signature)).toBe(false);
-    });
-
-    it('should reject tampered signatures', () => {
-      const payload = 'original-data';
-      const signature = service.signHMAC(payload);
-      const fakeSig = 'a'.repeat(64);
-      expect(service.verifyHMAC(payload, fakeSig)).toBe(false);
-    });
-
-    it('should reject signatures of wrong length', () => {
-      const payload = 'test';
-      expect(service.verifyHMAC(payload, 'short')).toBe(false);
-    });
-
-    it('should reject empty signature without throwing', () => {
-      expect(service.verifyHMAC('payload', '')).toBe(false);
-    });
-
-    it('should use timing-safe comparison', () => {
-      const payload = 'sensitive-data';
-      const realSig = service.signHMAC(payload);
-      expect(service.verifyHMAC(payload, 'gg'.repeat(32))).toBe(false);
-    });
-  });
-
   describe('buildIntegrityPayload (canonical v1)', () => {
     it('should produce canonical JSON with sorted keys', () => {
       const fechaInicio = new Date('2024-01-01');
@@ -153,12 +111,10 @@ describe('LicenciaCryptoService', () => {
         activa: true,
         revocada: false,
       });
-      // Parsear el JSON: las keys deben aparecer ordenadas asc.
       const parsed = JSON.parse(payload) as Record<string, unknown>;
       const keys = Object.keys(parsed);
       const sorted = [...keys].sort();
       expect(keys).toEqual(sorted);
-      // Campos incluidos
       expect(parsed).toHaveProperty('activa');
       expect(parsed).toHaveProperty('empresa_id');
       expect(parsed).toHaveProperty('fecha_inicio');
@@ -167,10 +123,8 @@ describe('LicenciaCryptoService', () => {
       expect(parsed).toHaveProperty('max_usuarios');
       expect(parsed).toHaveProperty('revocada');
       expect(parsed).toHaveProperty('tipo');
-      // Fechas normalizadas a ISO string
       expect(parsed.fecha_inicio).toBe(fechaInicio.toISOString());
       expect(parsed.fecha_vencimiento).toBe(fechaVenc.toISOString());
-      // NO debe incluir firma_hmac
       expect(parsed).not.toHaveProperty('firma_hmac');
     });
 
@@ -191,47 +145,22 @@ describe('LicenciaCryptoService', () => {
       expect(parsed.activa).toBe(true);
       expect(parsed.revocada).toBe(false);
     });
+  });
 
-    it('alterar hardware_id invalida la firma (buildPayloadForVersion v1)', () => {
-      const base = {
+  describe('buildEd25519Payload (canonical v2, 7 campos)', () => {
+    it('should exclude hardware_id', () => {
+      const payload = service.buildEd25519Payload({
         empresa_id: 'EMP-001',
-        tipo: 'trial',
+        tipo: 'suscripcion_anual',
         fecha_inicio: new Date('2024-01-01'),
         fecha_vencimiento: new Date('2025-01-01'),
-        max_usuarios: 5,
+        max_usuarios: 10,
         activa: true,
         revocada: false,
-      };
-      const p1 = service.buildPayloadForVersion(1, {
-        ...base,
-        hardware_id: 'hash-A',
       });
-      const p2 = service.buildPayloadForVersion(1, {
-        ...base,
-        hardware_id: 'hash-B',
-      });
-      expect(p1).not.toBe(p2);
-      const firma = service.signHMAC(p1);
-      expect(service.verifyHMAC(p2, firma)).toBe(false);
-    });
-
-    it('alterar revocada invalida la firma (v1 covers revocada)', () => {
-      const base = {
-        empresa_id: 'EMP-001',
-        tipo: 'trial',
-        fecha_inicio: new Date('2024-01-01'),
-        fecha_vencimiento: new Date('2025-01-01'),
-        max_usuarios: 0,
-        hardware_id: '',
-        activa: true,
-      };
-      const p1 = service.buildPayloadForVersion(1, {
-        ...base,
-        revocada: false,
-      });
-      const p2 = service.buildPayloadForVersion(1, { ...base, revocada: true });
-      const firma = service.signHMAC(p1);
-      expect(service.verifyHMAC(p2, firma)).toBe(false);
+      const parsed = JSON.parse(payload) as Record<string, unknown>;
+      expect(parsed).not.toHaveProperty('hardware_id');
+      expect(Object.keys(parsed)).toHaveLength(7);
     });
   });
 
