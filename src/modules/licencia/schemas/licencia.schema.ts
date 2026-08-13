@@ -70,15 +70,20 @@ export class Licencia {
   @Prop()
   ultima_verificacion_monotonic_ms: number;
 
+  /**
+   * Firma Ed25519 (hex, 128 chars) provista por XILEF y persistida verbatim.
+   * El cliente SOLO verifica; nunca re-firma.
+   */
   @Prop()
-  firma_hmac: string;
+  firma_ed25519: string;
 
   /**
-   * Versión del formato de firma HMAC.
-   * 1 = payload canónico (ordenado, JSON con hardware_id, max_usuarios, etc.)
-   * 0 / undefined = payload legacy (pipe-separated) para back-compat.
+   * Versión del formato de firma.
+   * 2 = payload canónico v2 (JSON ordenado, 7 campos sin hardware_id) — Ed25519.
+   * 1 = payload canónico v1 (JSON con hardware_id) — HMAC, solo de referencia.
+   * 0 / undefined = payload legacy (pipe-separated) — solo de referencia.
    */
-  @Prop({ default: 1 })
+  @Prop({ default: 2 })
   version_firma: number;
 
   /**

@@ -54,10 +54,11 @@ export class LicenciaValidatorService extends LicenciaValidator {
   }
 
   /**
-   * Reconstruye el payload de integridad según `version_firma` y lo verifica
-   * con verifyHMAC (comparación temporal-constante con length check).
-   * version_firma undefined o 0 → payload legacy (pipe-separated).
-   * version_firma >= 1 → payload canónico (JSON ordenado).
+   * Reconstruye el payload de integridad según `version_firma` y verifica la
+   * firma. version_firma 2 → Ed25519 (clave pública embebida) sobre el payload
+   * canónico v2 (7 campos, sin hardware_id). version_firma 0/undefined/1 →
+   * HMAC (muerto tras el cutover: solo de referencia, inalcanzable en clean
+   * start).
    */
   validateIntegrity(licencia: {
     empresa_id: string;
@@ -68,7 +69,7 @@ export class LicenciaValidatorService extends LicenciaValidator {
     hardware_id?: string;
     activa?: boolean;
     revocada?: boolean;
-    firma_hmac: string;
+    firma_ed25519: string;
     version_firma?: number;
   }): boolean {
     const payload = this.cryptoService.buildPayloadForVersion(
@@ -84,7 +85,11 @@ export class LicenciaValidatorService extends LicenciaValidator {
         revocada: licencia.revocada,
       },
     );
-    return this.cryptoService.verifyHMAC(payload, licencia.firma_hmac);
+    if (licencia.version_firma === 2) {
+      return this.cryptoService.verifyEd25519(payload, licencia.firma_ed25519);
+    }
+    // v0/v1 legacy: HMAC queda muerto en el cliente verify-only.
+    return this.cryptoService.verifyHMAC(payload, licencia.firma_ed25519);
   }
 
   validateHardwareId(

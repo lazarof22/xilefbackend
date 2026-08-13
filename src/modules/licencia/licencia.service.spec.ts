@@ -1,11 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
-import {
-  ConflictException,
-  NotFoundException,
-  BadRequestException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { LicenciaService } from './licencia.service';
 import { Licencia } from './schemas/licencia.schema';
 import { LicenciaCryptoService } from './services/licencia-crypto.service';
@@ -18,6 +13,21 @@ import { AuditoriaLicencia } from './schemas/auditoria-licencia.schema';
 import { NonceUsado } from './schemas/nonce-usado.schema';
 import { Types } from 'mongoose';
 
+// Firmas Ed25519 precalculadas con la clave privada de DEV (que vive FUERA de
+// src/). Las firmas son públicas y verificables con la clave pública embebida.
+// Payload canónico v2 de referencia (7 campos): empresa_id=EMP-001,
+// tipo=suscripcion_anual, fecha_inicio=2024-01-01, max_usuarios=10,
+// activa=true, revocada=false.
+const SIG_FUTURE =
+  'ed1cd8a164fccddfdb2cf53b4dd85e23a83550ea5ceac3c8c7b55d1b1aeac413' +
+  '0dc73e92956f7c48cf79c087f3843551782ff1712cddeaf6f211005cfb676904'; // venc 2099-01-01
+const SIG_PAST =
+  'f92bda923612744f87b8f5664054108bcd494a512fb07f9d7d60fb029fac0b75' +
+  'bd672e80b1827a8921ec1aa10a2733ed2c0f7cf8eadf87461bd59f0d3441450e'; // venc 2020-01-01
+const SIG_SKEW =
+  '1bf8a1c21917633a7d31df7c976da41e32e9e71be8d67dfc716ee4dc35db37bf' +
+  '3d5d13b2c4049c60ac80001a80493dd5cee7f8cb3842b0c71ecdb243804fa30a'; // venc 2025-12-31
+
 describe('LicenciaService', () => {
   let service: LicenciaService;
   let cryptoService: LicenciaCryptoService;
@@ -25,17 +35,15 @@ describe('LicenciaService', () => {
   let mockAuditoriaModel: any;
   let mockNonceModel: any;
 
-  const baseSaltB64 = Buffer.alloc(32, 0x01).toString('base64');
-
   const buildMockDoc = (overrides: Partial<Record<string, unknown>> = {}) => ({
     _id: new Types.ObjectId(),
     clave_hash: 'abc123hash',
     clave_activacion_encriptada: 'encrypted-key',
     empresa_nombre: 'Test Empresa',
     empresa_id: 'EMP-001',
-    tipo: 'suscripcion_mensual',
+    tipo: 'suscripcion_anual',
     fecha_inicio: new Date('2024-01-01'),
-    fecha_vencimiento: new Date('2025-01-01'),
+    fecha_vencimiento: new Date('2099-01-01'),
     activa: true,
     dias_restantes: 180,
     max_usuarios: 10,
@@ -44,8 +52,8 @@ describe('LicenciaService', () => {
     ultima_verificacion_efectiva: undefined,
     skew_detectado: false,
     ultima_verificacion_monotonic_ms: undefined,
-    firma_hmac: 'valid-hmac-signature',
-    version_firma: 1,
+    firma_ed25519: SIG_FUTURE,
+    version_firma: 2,
     requiere_re_firma: false,
     metadata: {},
     revocada: false,
@@ -55,25 +63,7 @@ describe('LicenciaService', () => {
     ...overrides,
   });
 
-  const signV1 = (doc: Record<string, unknown>): string => {
-    const payload = cryptoService.buildIntegrityPayload({
-      empresa_id: doc.empresa_id as string,
-      tipo: doc.tipo as string,
-      fecha_inicio: doc.fecha_inicio as Date,
-      fecha_vencimiento: doc.fecha_vencimiento as Date,
-      max_usuarios: doc.max_usuarios as number,
-      hardware_id: (doc.hardware_id as string | undefined) ?? '',
-      activa: doc.activa as boolean,
-      revocada: doc.revocada as boolean,
-    });
-    return cryptoService.signHMAC(payload);
-  };
-
   beforeEach(async () => {
-    process.env.LICENSE_SECRET_KEY = 'test-secret-key-min-32-chars-long!!';
-    process.env.LICENSE_SIGN_SECRET = 'test-sign-secret-min-32-chars!!!';
-    process.env.LICENSE_SALT = baseSaltB64;
-
     const mockDoc = buildMockDoc();
     mockLicenciaModel = {
       create: jest.fn().mockResolvedValue(mockDoc),
@@ -126,7 +116,7 @@ describe('LicenciaService', () => {
               enPeriodoGracia: false,
               diasRestantes: 30,
               data: {
-                tipo: 'suscripcion_mensual',
+                tipo: 'suscripcion_anual',
                 empresa_nombre: 'Test',
                 fecha_vencimiento: new Date(
                   Date.now() + 30 * 86400000,
@@ -147,11 +137,6 @@ describe('LicenciaService', () => {
 
     service = module.get<LicenciaService>(LicenciaService);
     cryptoService = module.get<LicenciaCryptoService>(LicenciaCryptoService);
-
-    // Trigger onModuleInit del crypto service
-    await (
-      cryptoService as unknown as { onModuleInit: () => void }
-    ).onModuleInit();
   });
 
   afterEach(() => {
@@ -162,48 +147,20 @@ describe('LicenciaService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('generateLicencia', () => {
-    it('should generate a new license (firma)', async () => {
-      mockLicenciaModel.findOne.mockResolvedValue(null);
-
-      const result = await service.generateLicencia({
-        empresa_nombre: 'Test Corp',
-        empresa_id: 'EMP-NEW',
-        tipo: 'suscripcion_mensual',
-        max_usuarios: 5,
-      });
-
-      expect(result.mensaje).toContain('exitosa');
-      expect(result.licencia.clave).toMatch(/^XILEF-/);
-      expect(mockLicenciaModel.create).toHaveBeenCalled();
-      const created = mockLicenciaModel.create.mock.calls[0][0] as Record<
-        string,
-        unknown
-      >;
-      expect(created.version_firma).toBe(2);
-      expect(created.requiere_re_firma).toBe(false);
-      expect(created.hardware_id).toBe('');
-    });
-
-    it('should throw ConflictException if empresa already has license', async () => {
-      mockLicenciaModel.findOne.mockResolvedValue({ empresa_id: 'EMP-001' });
-      await expect(
-        service.generateLicencia({
-          empresa_nombre: 'Test',
-          empresa_id: 'EMP-001',
-          tipo: 'trial',
-        }),
-      ).rejects.toThrow(ConflictException);
-    });
-  });
-
-  describe('activarLicencia', () => {
+  describe('activarLicencia (verify-only Ed25519)', () => {
+    // DTO firmado por XILEF: los campos tipo/fechas/max_usuarios forman el
+    // payload canónico v2 y `firma_ed25519` es la firma de XILEF sobre ellos.
     const validDto = (overrides: Record<string, unknown> = {}) => ({
       clave_activacion: 'XILEF-A1B2-C3D4-E5F6-F7A8',
       empresa_nombre: 'Test',
       empresa_id: 'EMP-001',
       nonce: 'nonce-1',
       hardware_id: 'device-fingerprint-aaa',
+      tipo: 'suscripcion_anual' as const,
+      fecha_inicio: '2024-01-01T00:00:00.000Z',
+      fecha_vencimiento: '2099-01-01T00:00:00.000Z',
+      max_usuarios: 10,
+      firma_ed25519: SIG_FUTURE,
       ...overrides,
     });
 
@@ -222,109 +179,103 @@ describe('LicenciaService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should throw NotFoundException for non-existent key', async () => {
+    it('should reject a forged signature with integridad audit and no Mongo write', async () => {
       mockLicenciaModel.findOne.mockResolvedValue(null);
       await expect(
-        service.activarLicencia(
-          validDto({ clave_activacion: 'XILEF-AAAA-BBBB-CCCC-DDDD' }),
-        ),
-      ).rejects.toThrow(NotFoundException);
+        service.activarLicencia(validDto({ firma_ed25519: 'a'.repeat(128) })),
+      ).rejects.toThrow(BadRequestException);
+
+      // No se escribe en Mongo ante firma inválida.
+      expect(mockLicenciaModel.create).not.toHaveBeenCalled();
+      // Audit rechazo con motivo 'integridad'.
+      const auditRechazo = mockAuditoriaModel.create.mock.calls.find(
+        (c: any[]) =>
+          (c[0] as { accion?: string; detalles?: { motivo?: string } })
+            ?.accion === 'rechazo',
+      );
+      expect(auditRechazo).toBeDefined();
+      expect(
+        (auditRechazo![0] as { detalles: { motivo: string } }).detalles.motivo,
+      ).toBe('integridad');
+    });
+
+    it('should activate a valid XILEF-signed license (create, verbatim firma)', async () => {
+      mockLicenciaModel.findOne.mockResolvedValue(null);
+
+      const dto = validDto();
+      const result = await service.activarLicencia(dto);
+
+      expect(result.valida).toBe(true);
+      expect(result.vigente).toBe(true);
+      expect(mockLicenciaModel.create).toHaveBeenCalled();
+      const created = mockLicenciaModel.create.mock.calls[0][0] as Record<
+        string,
+        unknown
+      >;
+      // Sin re-firma: la firma persistida es la provista por XILEF.
+      expect(created.firma_ed25519).toBe(SIG_FUTURE);
+      expect(created.version_firma).toBe(2);
+    });
+
+    it('should update an existing license keeping the XILEF signature verbatim', async () => {
+      const doc = buildMockDoc({ hardware_id: undefined, revocada: false });
+      mockLicenciaModel.findOne.mockResolvedValue(doc);
+
+      const result = await service.activarLicencia(validDto());
+
+      expect(result.valida).toBe(true);
+      expect(doc.save).toHaveBeenCalled();
+      expect(doc.firma_ed25519).toBe(SIG_FUTURE);
+      expect(doc.version_firma).toBe(2);
     });
 
     it('should throw BadRequestException for revoked license', async () => {
-      const validKey = 'XILEF-AAAA-BBBB-CCCC-DDDD';
-      const claveHash = cryptoService.generateSHA256Hash(validKey);
-      const doc = buildMockDoc({
-        clave_hash: claveHash,
-        revocada: true,
-        motivo_revocacion: 'Fraud',
-      });
-      mockLicenciaModel.findOne.mockResolvedValue(doc);
-      await expect(
-        service.activarLicencia(validDto({ clave_activacion: validKey })),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException for expired license', async () => {
-      const doc = buildMockDoc({
-        fecha_vencimiento: new Date('2020-01-01'),
-        revocada: false,
-      });
+      const doc = buildMockDoc({ revocada: true, motivo_revocacion: 'Fraud' });
       mockLicenciaModel.findOne.mockResolvedValue(doc);
       await expect(service.activarLicencia(validDto())).rejects.toThrow(
         BadRequestException,
       );
+    });
+
+    it('should throw BadRequestException for expired license (past vencimiento)', async () => {
+      await expect(
+        service.activarLicencia(
+          validDto({
+            fecha_vencimiento: '2020-01-01T00:00:00.000Z',
+            firma_ed25519: SIG_PAST,
+          }),
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw ForbiddenException when hardware_id diverges from stored', async () => {
       const storedHash = cryptoService.generateSHA256Hash('device-original');
       const doc = buildMockDoc({
         hardware_id: storedHash,
-        firma_hmac: '', // will be checked after hardware; provide placeholder
         revocada: false,
-        fecha_vencimiento: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
       });
-      // firmar el doc para que validateIntegrity no bloquee antes del hw check
-      doc.firma_hmac = cryptoService.signHMAC(
-        cryptoService.buildIntegrityPayload({
-          empresa_id: doc.empresa_id,
-          tipo: doc.tipo,
-          fecha_inicio: doc.fecha_inicio,
-          fecha_vencimiento: doc.fecha_vencimiento,
-          max_usuarios: doc.max_usuarios,
-          hardware_id: storedHash,
-          activa: true,
-          revocada: false,
-        }),
-      );
       mockLicenciaModel.findOne.mockResolvedValue(doc);
+
       await expect(
-        service.activarLicencia(
-          validDto({ hardware_id: 'device-otrO', empresa_id: 'EMP-001' }),
-        ),
+        service.activarLicencia(validDto({ hardware_id: 'device-otrO' })),
       ).rejects.toThrow(ForbiddenException);
-      // Debe auditar el rechazo
+
       expect(mockAuditoriaModel.create).toHaveBeenCalled();
       const auditArg = mockAuditoriaModel.create.mock.calls.find(
-        (c) => (c[0] as { accion?: string }).accion === 'rechazo',
+        (c: any[]) => (c[0] as { accion?: string })?.accion === 'rechazo',
       );
       expect(auditArg).toBeDefined();
     });
 
-    it('should throw BadRequestException when firma is invalid (integridad)', async () => {
-      const doc = buildMockDoc({
-        fecha_vencimiento: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-        firma_hmac: 'invalid-signature-bad',
-        version_firma: 1,
-      });
-      mockLicenciaModel.findOne.mockResolvedValue(doc);
-      await expect(service.activarLicencia(validDto())).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
     it('should throw ForbiddenException when re-vinculating to another empresa_id', async () => {
-      const doc = buildMockDoc({
-        empresa_id: 'EMP-001',
-        fecha_vencimiento: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-        firma_hmac: '',
-      });
-      doc.firma_hmac = cryptoService.signHMAC(
-        cryptoService.buildIntegrityPayload({
-          empresa_id: 'EMP-001',
-          tipo: doc.tipo,
-          fecha_inicio: doc.fecha_inicio,
-          fecha_vencimiento: doc.fecha_vencimiento,
-          max_usuarios: doc.max_usuarios,
-          hardware_id: '',
-          activa: true,
-          revocada: false,
-        }),
-      );
+      // La firma es válida sobre empresa_id=EMP-001 (dto); el registro ya está
+      // vinculado a EMP-OTRA → rechazo de re-vinculación.
+      const doc = buildMockDoc({ empresa_id: 'EMP-OTRA' });
       mockLicenciaModel.findOne.mockResolvedValue(doc);
-      await expect(
-        service.activarLicencia(validDto({ empresa_id: 'EMP-OTRA' })),
-      ).rejects.toThrow(ForbiddenException);
+
+      await expect(service.activarLicencia(validDto())).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -337,21 +288,18 @@ describe('LicenciaService', () => {
       expect(result.dias_restantes).toBe(0);
     });
 
-    it('should return valid for active license with v1 firma', async () => {
-      const fechaVenc = new Date();
-      fechaVenc.setDate(fechaVenc.getDate() + 100);
-      const fechaInicio = new Date('2024-01-01');
+    it('should return valid for active license with v2 firma', async () => {
       const doc = buildMockDoc({
-        fecha_vencimiento: fechaVenc,
-        fecha_inicio: fechaInicio,
-        version_firma: 1,
+        fecha_vencimiento: new Date('2099-01-01'),
+        fecha_inicio: new Date('2024-01-01'),
+        version_firma: 2,
         hardware_id: '',
         max_usuarios: 10,
         activa: true,
         revocada: false,
+        firma_ed25519: SIG_FUTURE,
         save: jest.fn().mockResolvedValue(true),
       });
-      doc.firma_hmac = signV1(doc);
       mockLicenciaModel.findOne.mockResolvedValue(doc);
 
       const result = await service.verificarEstado('EMP-001');
@@ -360,153 +308,41 @@ describe('LicenciaService', () => {
     });
 
     it('should keep license expired when clock rewinds below ultima_verificacion_efectiva', async () => {
-      const fechaVenc = new Date('2025-12-31'); // vence en el futuro relativo a hoy
       const efectiva = new Date('2099-01-01'); // última verificación efectiva futura
       const doc = buildMockDoc({
-        fecha_vencimiento: fechaVenc,
+        fecha_vencimiento: new Date('2025-12-31'),
         ultima_verificacion_efectiva: efectiva,
-        version_firma: 1,
+        version_firma: 2,
         hardware_id: '',
         max_usuarios: 10,
         activa: true,
         revocada: false,
+        firma_ed25519: SIG_SKEW,
         save: jest.fn().mockResolvedValue(true),
       });
-      doc.firma_hmac = signV1(doc);
       mockLicenciaModel.findOne.mockResolvedValue(doc);
 
       const result = await service.verificarEstado('EMP-001');
-      // Aunque la fecha de vencimiento es futura, con skew la compara contra
-      // la efectiva (2099-01-01) → ya está vencida.
+      // Aunque la fecha de vencimiento es futura, con skew se compara contra la
+      // efectiva (2099-01-01) → ya está vencida.
       expect(result.vigente).toBe(false);
-      // Y valida debe ser false porque la firma cubre `vigente`? En la
-      // implementación, `valida` sigue siendo true si la firma es válida y
-      // `activa && !revocada` (no usamos vigente). Verificamos skew audit.
       expect(doc.skew_detectado).toBe(true);
     });
 
     it('should audit integrity breach and deactivate license', async () => {
       const doc = buildMockDoc({
         fecha_vencimiento: new Date(Date.now() + 1000 * 60 * 60 * 24),
-        firma_hmac: 'invalid-signature',
-        version_firma: 1,
+        firma_ed25519: 'invalid-signature',
+        version_firma: 2,
         save: jest.fn().mockResolvedValue(true),
       });
       mockLicenciaModel.findOne.mockResolvedValue(doc);
 
       const result = await service.verificarEstado('EMP-001');
       expect(result.valida).toBe(false);
-      // La licencia marcada inactiva
       expect(doc.activa).toBe(false);
-      // Audit rechazo registrado
       const auditRechazo = mockAuditoriaModel.create.mock.calls.find(
-        (c) => (c[0] as { accion?: string }).accion === 'rechazo',
-      );
-      expect(auditRechazo).toBeDefined();
-    });
-  });
-
-  describe('renovarLicencia', () => {
-    it('should extend license expiry', async () => {
-      const fechaVenc = new Date('2020-01-01');
-      const fechaInicio = new Date('2019-01-01');
-      const doc = buildMockDoc({
-        fechaInicio,
-        fecha_vencimiento: fechaVenc,
-        version_firma: 1,
-        hardware_id: '',
-        max_usuarios: 10,
-        activa: true,
-        revocada: false,
-        save: jest.fn().mockResolvedValue(true),
-      });
-      doc.firma_hmac = signV1(doc);
-
-      mockLicenciaModel.findOne.mockResolvedValue(doc);
-
-      const result = await service.renovarLicencia({
-        empresa_id: 'EMP-001',
-        dias: 30,
-      });
-
-      expect(result.mensaje).toContain('renovada');
-      expect(doc.save).toHaveBeenCalled();
-    });
-
-    it('should throw NotFoundException if no license', async () => {
-      mockLicenciaModel.findOne.mockResolvedValue(null);
-      await expect(
-        service.renovarLicencia({ empresa_id: 'NONEXISTENT', dias: 365 }),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should NOT un-revoke a revoked license (P1-1)', async () => {
-      const doc = buildMockDoc({
-        revocada: true,
-        motivo_revocacion: 'fraude',
-        fecha_vencimiento: new Date('2025-12-31'),
-        activa: false,
-        save: jest.fn().mockResolvedValue(true),
-      });
-      mockLicenciaModel.findOne.mockResolvedValue(doc);
-
-      await expect(
-        service.renovarLicencia({ empresa_id: 'EMP-001', dias: 30 }),
-      ).rejects.toThrow(BadRequestException);
-
-      // No se debe resetear el flag de revocada (no se llamó save con revocada=false)
-      expect(doc.save).not.toHaveBeenCalled();
-      expect(doc.revocada).toBe(true);
-    });
-  });
-
-  describe('revocarLicencia', () => {
-    it('should revoke an active license and re-sign with revocada=true', async () => {
-      const doc = buildMockDoc({
-        activa: true,
-        revocada: false,
-        version_firma: 1,
-        hardware_id: '',
-        max_usuarios: 10,
-        save: jest.fn().mockResolvedValue(true),
-      });
-      doc.firma_hmac = signV1(doc);
-      mockLicenciaModel.findOne.mockResolvedValue(doc);
-
-      const result = await service.revocarLicencia(
-        'EMP-001',
-        'Violación de términos',
-      );
-      expect(result.mensaje).toContain('revocada');
-      expect(doc.revocada).toBe(true);
-      expect(doc.activa).toBe(false);
-      expect(doc.motivo_revocacion).toBe('Violación de términos');
-      expect(doc.save).toHaveBeenCalled();
-      // La firma debe seguir siendo válida tras revocar (activa=false, revocada=true)
-      const ok = cryptoService.verifyHMAC(
-        cryptoService.buildIntegrityPayload({
-          empresa_id: doc.empresa_id,
-          tipo: doc.tipo,
-          fecha_inicio: doc.fecha_inicio,
-          fecha_vencimiento: doc.fecha_vencimiento,
-          max_usuarios: doc.max_usuarios,
-          hardware_id: (doc.hardware_id as unknown as string) ?? '',
-          activa: false,
-          revocada: true,
-        }),
-        doc.firma_hmac,
-      );
-      expect(ok).toBe(true);
-    });
-
-    it('should throw NotFoundException (and audit) when no license', async () => {
-      mockLicenciaModel.findOne.mockResolvedValue(null);
-      await expect(
-        service.revocarLicencia('NONEXISTENT', 'motivo'),
-      ).rejects.toThrow(NotFoundException);
-      // Audit rechazo registrado
-      const auditRechazo = mockAuditoriaModel.create.mock.calls.find(
-        (c) => (c[0] as { accion?: string }).accion === 'rechazo',
+        (c: any[]) => (c[0] as { accion?: string })?.accion === 'rechazo',
       );
       expect(auditRechazo).toBeDefined();
     });
@@ -535,28 +371,23 @@ describe('LicenciaService', () => {
       const result = await service.findAll();
       expect(result).toBeDefined();
       expect(mockLicenciaModel.select).toHaveBeenCalledWith(
-        '-clave_activacion_encriptada -firma_hmac',
+        '-clave_activacion_encriptada -firma_ed25519',
       );
     });
   });
 
-  describe('estadoPublico (P0-8 + P2-7)', () => {
+  describe('estadoPublico', () => {
     it('should return only { valida, vigente } for valid license', async () => {
-      const fechaVenc = new Date();
-      fechaVenc.setDate(fechaVenc.getDate() + 10);
-      const fechaInicio = new Date('2024-01-01');
       const doc = buildMockDoc({
-        fecha_vencimiento: fechaVenc,
-        fecha_inicio: fechaInicio,
+        fecha_vencimiento: new Date('2099-01-01'),
+        fecha_inicio: new Date('2024-01-01'),
         activa: true,
         revocada: false,
-        version_firma: 1,
+        version_firma: 2,
         hardware_id: '',
-        max_usuarios: 5,
+        max_usuarios: 10,
+        firma_ed25519: SIG_FUTURE,
       });
-      doc.firma_hmac = signV1(doc);
-      // El service usa findOne con .select(...) y .lean() sobre el resultado.
-      // Mockear como objeto plano.
       mockLicenciaModel.findOne.mockReturnValue({
         select: jest.fn().mockReturnValue({
           lean: jest.fn().mockResolvedValue(doc),
@@ -568,7 +399,6 @@ describe('LicenciaService', () => {
       const elapsed = Date.now() - start;
 
       expect(result).toEqual({ valida: true, vigente: true });
-      // fixedTimeResponse debe respetar al menos 150ms
       expect(elapsed).toBeGreaterThanOrEqual(140);
     });
 
@@ -586,21 +416,16 @@ describe('LicenciaService', () => {
       expect(elapsed).toBeGreaterThanOrEqual(140);
     });
 
-    it('should return false when license is revoked', async () => {
+    it('should return false when license is revoked (tampered firma)', async () => {
       const doc = buildMockDoc({
         revocada: true,
         activa: false,
-        version_firma: 1,
+        version_firma: 2,
         fecha_vencimiento: new Date(Date.now() + 1000 * 60 * 60 * 24),
+        // Firma sobre la licencia NO revocada (activa=true): validateIntegrity
+        // falla porque `revocada`/`activa` forman parte del payload firmado.
+        firma_ed25519: SIG_FUTURE,
       });
-      // Firma generada sobre licencia NO revocada (votación): validateIntegrity
-      // invalidará la firma porque `revocada` está firmada en v1 y se alteró.
-      const firmante = buildMockDoc({
-        revocada: false,
-        activa: true,
-        fecha_vencimiento: doc.fecha_vencimiento,
-      });
-      doc.firma_hmac = signV1(firmante);
       mockLicenciaModel.findOne.mockReturnValue({
         select: jest.fn().mockReturnValue({
           lean: jest.fn().mockResolvedValue(doc),

@@ -4,7 +4,6 @@ import { LicenciaService } from './licencia.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { LicenciaTipo } from './constants/licencia.constants';
 import { BadRequestException } from '@nestjs/common';
 
 describe('LicenciaController', () => {
@@ -13,18 +12,6 @@ describe('LicenciaController', () => {
 
   beforeEach(async () => {
     mockLicenciaService = {
-      generateLicencia: jest.fn().mockResolvedValue({
-        mensaje: 'Licencia generada exitosamente',
-        licencia: {
-          clave: 'XILEF-A1B2-C3D4-E5F6-F7A8',
-          empresa: 'Test Corp',
-          tipo: 'suscripcion_anual',
-          fecha_inicio: new Date(),
-          fecha_vencimiento: new Date(),
-          dias_restantes: 365,
-          max_usuarios: 10,
-        },
-      }),
       activarLicencia: jest.fn().mockResolvedValue({
         mensaje: 'Licencia activada exitosamente',
         valida: true,
@@ -42,19 +29,6 @@ describe('LicenciaController', () => {
         empresa: 'Test Corp',
         fecha_vencimiento: new Date(),
         max_usuarios: 10,
-      }),
-      renovarLicencia: jest.fn().mockResolvedValue({
-        mensaje: 'Licencia renovada exitosamente',
-        licencia: {
-          empresa: 'Test Corp',
-          tipo: 'suscripcion_anual',
-          fecha_inicio: new Date(),
-          fecha_vencimiento: new Date(),
-          dias_restantes: 365,
-        },
-      }),
-      revocarLicencia: jest.fn().mockResolvedValue({
-        mensaje: 'Licencia revocada exitosamente',
       }),
       findAll: jest.fn().mockResolvedValue([
         {
@@ -134,6 +108,11 @@ describe('LicenciaController', () => {
         empresa_id: 'EMP-001',
         nonce: 'n1',
         hardware_id: 'dev-1',
+        tipo: 'suscripcion_anual' as const,
+        fecha_inicio: '2024-01-01T00:00:00.000Z',
+        fecha_vencimiento: '2099-01-01T00:00:00.000Z',
+        max_usuarios: 10,
+        firma_ed25519: 'a'.repeat(128),
       };
       const result = await controller.activar(dto, '127.0.0.1', {
         headers: { 'user-agent': 'TestAgent/1.0' },
@@ -205,49 +184,23 @@ describe('LicenciaController', () => {
     });
   });
 
-  describe('generar', () => {
-    it('should generate a license', async () => {
-      const dto = {
-        empresa_nombre: 'New Corp',
-        empresa_id: 'EMP-NEW',
-        tipo: 'suscripcion_anual' as LicenciaTipo,
-      };
-      const result = await controller.generar(dto);
-      expect(mockLicenciaService.generateLicencia).toHaveBeenCalledWith(dto);
-      expect(result.licencia.clave).toBe('XILEF-A1B2-C3D4-E5F6-F7A8');
+  describe('removed signing endpoints', () => {
+    it('should NOT expose generar method', () => {
+      expect(
+        (controller as unknown as Record<string, unknown>).generar,
+      ).toBeUndefined();
     });
-  });
 
-  describe('renovar', () => {
-    it('should renew a license with track info', async () => {
-      const dto = { empresa_id: 'EMP-001', dias: 365 };
-      const result = await controller.renovar(dto, {
-        headers: { 'user-agent': 'UA/1' },
-        ip: '127.0.0.1',
-      });
-      expect(mockLicenciaService.renovarLicencia).toHaveBeenCalledWith(
-        dto,
-        '127.0.0.1',
-        'UA/1',
-      );
-      expect(result.mensaje).toContain('renovada');
+    it('should NOT expose renovar method', () => {
+      expect(
+        (controller as unknown as Record<string, unknown>).renovar,
+      ).toBeUndefined();
     });
-  });
 
-  describe('revocar', () => {
-    it('should revoke a license with RevocarLicenciaDto (P1-6)', async () => {
-      const result = await controller.revocar(
-        'EMP-001',
-        { motivo: 'Violación de términos' },
-        { headers: {}, ip: '127.0.0.1' },
-      );
-      expect(mockLicenciaService.revocarLicencia).toHaveBeenCalledWith(
-        'EMP-001',
-        'Violación de términos',
-        '127.0.0.1',
-        '',
-      );
-      expect(result.mensaje).toContain('revocada');
+    it('should NOT expose revocar method', () => {
+      expect(
+        (controller as unknown as Record<string, unknown>).revocar,
+      ).toBeUndefined();
     });
   });
 
@@ -258,7 +211,7 @@ describe('LicenciaController', () => {
       expect(result).toHaveLength(1);
       const item = result[0] as unknown as Record<string, unknown>;
       expect(item).toHaveProperty('empresa_id', 'EMP-001');
-      expect(item).not.toHaveProperty('firma_hmac');
+      expect(item).not.toHaveProperty('firma_ed25519');
       expect(item).not.toHaveProperty('clave_activacion_encriptada');
       expect(item).not.toHaveProperty('clave_hash');
     });
@@ -270,7 +223,7 @@ describe('LicenciaController', () => {
       expect(mockLicenciaService.findOne).toHaveBeenCalledWith('EMP-001');
       const item = result as unknown as Record<string, unknown>;
       expect(item.empresa_id).toBe('EMP-001');
-      expect(item).not.toHaveProperty('firma_hmac');
+      expect(item).not.toHaveProperty('firma_ed25519');
     });
   });
 
@@ -315,11 +268,6 @@ describe('LicenciaController', () => {
 
   describe('route ordering (P0-9)', () => {
     it('should NOT match /admin/auditoria to :empresaId param route', async () => {
-      // Verificamos que el método `auditoria` responde correctamente; supertest
-      // se omite por scope. Acá comprobamos que el handler está registrado antes
-      // que `obtenerUna` (declaración del controller).
-      // Como verificación simple: el método `auditoria` existe y `obtenerUna`
-      // también, en el orden declarado en el controller.
       expect(
         typeof (controller as unknown as { auditoria: unknown }).auditoria,
       ).toBe('function');

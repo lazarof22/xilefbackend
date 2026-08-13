@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { LicenciaCryptoService } from './licencia-crypto.service';
 import { GRACE_PERIOD_DAYS } from '../constants/licencia.constants';
+import { buildEd25519Payload } from './payload-builder';
 import type { LicenciaDocument } from '../schemas/licencia.schema';
 
 export interface LicenciaOfflineData {
@@ -18,7 +19,7 @@ export interface LicenciaOfflineData {
   revocada: boolean;
   ultima_sincronizacion: string;
   ultima_verificacion_efectiva: string;
-  signature: string;
+  firma_ed25519: string;
 }
 
 export interface OfflineValidationResult {
@@ -66,14 +67,20 @@ export class LicenciaOfflineService implements OnModuleInit {
     return true;
   }
 
+  /**
+   * Escribe el .lic como copia congelada: `firma_ed25519` se copia VERBATIM del
+   * documento (firma de XILEF). NO re-firma (sin signHMAC). La metadata no
+   * firmada (empresa_nombre, hardware_id, ultima_sincronizacion,
+   * ultima_verificacion_efectiva, version) se persiste pero no se verifica.
+   */
   async writeLicenseFile(licencia: LicenciaDocument): Promise<void> {
     try {
       const now = new Date().toISOString();
       const efectiva = licencia.ultima_verificacion_efectiva
         ? licencia.ultima_verificacion_efectiva.toISOString()
         : now;
-      const data: Omit<LicenciaOfflineData, 'signature'> = {
-        version: 1,
+      const data: Omit<LicenciaOfflineData, 'firma_ed25519'> = {
+        version: 2,
         empresa_id: licencia.empresa_id,
         empresa_nombre: licencia.empresa_nombre,
         tipo: licencia.tipo,
@@ -87,10 +94,10 @@ export class LicenciaOfflineService implements OnModuleInit {
         ultima_verificacion_efectiva: efectiva,
       };
 
-      const payload = this.buildOfflinePayload(data);
-      const signature = this.cryptoService.signHMAC(payload);
-
-      const fullData: LicenciaOfflineData = { ...data, signature };
+      const fullData: LicenciaOfflineData = {
+        ...data,
+        firma_ed25519: licencia.firma_ed25519 ?? '',
+      };
       await fs.promises.writeFile(
         this.filePath,
         JSON.stringify(fullData, null, 2),
@@ -108,7 +115,7 @@ export class LicenciaOfflineService implements OnModuleInit {
       const raw = await fs.promises.readFile(this.filePath, 'utf8');
       const data = JSON.parse(raw) as LicenciaOfflineData;
 
-      if (!data.signature || !this.verifySignature(data)) {
+      if (!data.firma_ed25519 || !this.verifySignature(data)) {
         this.logger.warn('Archivo .lic con firma inválida');
         return null;
       }
@@ -127,9 +134,16 @@ export class LicenciaOfflineService implements OnModuleInit {
   }
 
   verifySignature(data: LicenciaOfflineData): boolean {
-    const { signature, ...fields } = data;
-    const payload = this.buildOfflinePayload(fields);
-    return this.cryptoService.verifyHMAC(payload, signature);
+    const payload = buildEd25519Payload({
+      empresa_id: data.empresa_id,
+      tipo: data.tipo,
+      fecha_inicio: new Date(data.fecha_inicio),
+      fecha_vencimiento: new Date(data.fecha_vencimiento),
+      max_usuarios: data.max_usuarios,
+      activa: data.activa,
+      revocada: data.revocada,
+    });
+    return this.cryptoService.verifyEd25519(payload, data.firma_ed25519);
   }
 
   async isOfflineLicenseValid(): Promise<boolean> {
@@ -232,28 +246,5 @@ export class LicenciaOfflineService implements OnModuleInit {
 
   async syncFromDb(licencia: LicenciaDocument): Promise<void> {
     await this.writeLicenseFile(licencia);
-  }
-
-  private buildOfflinePayload(
-    data: Omit<LicenciaOfflineData, 'signature'>,
-  ): string {
-    const payload: Record<string, unknown> = {
-      activa: data.activa,
-      empresa_id: data.empresa_id,
-      empresa_nombre: data.empresa_nombre,
-      fecha_inicio: data.fecha_inicio,
-      fecha_vencimiento: data.fecha_vencimiento,
-      hardware_id: data.hardware_id,
-      max_usuarios: data.max_usuarios,
-      revocada: data.revocada,
-      tipo: data.tipo,
-      ultima_sincronizacion: data.ultima_sincronizacion,
-      ultima_verificacion_efectiva: data.ultima_verificacion_efectiva,
-      version: data.version,
-    };
-    const keys = Object.keys(payload).sort();
-    const sorted: Record<string, unknown> = {};
-    for (const k of keys) sorted[k] = payload[k];
-    return JSON.stringify(sorted);
   }
 }

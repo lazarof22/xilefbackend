@@ -11,7 +11,7 @@ export abstract class LicenciaValidator {
 
   abstract validateIntegrity(
     licencia: LicenciaIntegrityData & {
-      firma_hmac: string;
+      firma_ed25519: string;
       version_firma?: number;
       max_usuarios?: number;
       hardware_id?: string;

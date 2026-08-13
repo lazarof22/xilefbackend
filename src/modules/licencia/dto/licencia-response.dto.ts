@@ -4,7 +4,7 @@ import type { EstadoLicenciaResponse } from '../types/licencia.types';
 
 /**
  * Respuesta para admin: omite los campos sensibles (clave_activacion_encriptada,
- * firma_hmac, clave_hash, hardware_id). Incluye todo lo demás necesario para
+ * firma_ed25519, clave_hash, hardware_id). Incluye todo lo demás necesario para
  * auditoría y gestión.
  */
 export class LicenciaAdminResponseDto {

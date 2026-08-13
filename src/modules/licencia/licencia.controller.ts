@@ -21,15 +21,12 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiParam,
   ApiQuery,
+  ApiParam,
 } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { LicenciaService } from './licencia.service';
 import { ActivarLicenciaDto } from './dto/activar-licencia.dto';
-import { GenerarLicenciaDto } from './dto/generar-licencia.dto';
-import { RenovarLicenciaDto } from './dto/renovar-licencia.dto';
-import { RevocarLicenciaDto } from './dto/revocar-licencia.dto';
 import {
   LicenciaAdminResponseDto,
   LicenciaUserResponseDto,
@@ -41,10 +38,6 @@ import { LICENCIA_FORMAT_REGEX } from './constants/licencia.constants';
 import {
   FormatoClaveResponse,
   LicenciaActivadaResponse,
-  EstadoLicenciaResponse,
-  LicenciaGeneradaResponse,
-  LicenciaRenovadaResponse,
-  RevocarResponse,
   EstadoPublicoResponse,
 } from './types/licencia.types';
 
@@ -142,56 +135,6 @@ export class LicenciaController {
       req.headers?.['user-agent'] as string | undefined,
     );
     return LicenciaUserResponseDto.fromEstado(estado);
-  }
-
-  @Post('generar')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Generar una nueva licencia (solo admin)' })
-  @ApiResponse({ status: 201, description: 'Licencia generada exitosamente' })
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('administrador')
-  generar(@Body() dto: GenerarLicenciaDto): Promise<LicenciaGeneradaResponse> {
-    return this.licenciaService.generateLicencia(dto);
-  }
-
-  @Post('renovar')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Renovar una licencia existente (solo admin)' })
-  @ApiResponse({ status: 200, description: 'Licencia renovada exitosamente' })
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('administrador')
-  renovar(
-    @Body() dto: RenovarLicenciaDto,
-    @Req() req: RequestWithUser,
-  ): Promise<LicenciaRenovadaResponse> {
-    const uaRaw = req.headers?.['user-agent'];
-    const ua = Array.isArray(uaRaw) ? uaRaw[0] : (uaRaw ?? '');
-    return this.licenciaService.renovarLicencia(dto, req.ip, ua);
-  }
-
-  @Post('revocar/:empresaId')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Revocar una licencia (solo admin)' })
-  @ApiParam({ name: 'empresaId', description: 'ID de la empresa' })
-  @ApiResponse({ status: 200, description: 'Licencia revocada exitosamente' })
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('administrador')
-  revocar(
-    @Param('empresaId') empresaId: string,
-    @Body() body: RevocarLicenciaDto,
-    @Req() req: RequestWithUser,
-  ): Promise<RevocarResponse> {
-    const uaRaw = req.headers?.['user-agent'];
-    const ua = Array.isArray(uaRaw) ? uaRaw[0] : (uaRaw ?? '');
-    return this.licenciaService.revocarLicencia(
-      empresaId,
-      body.motivo,
-      req.ip,
-      ua,
-    );
   }
 
   @Get('admin/auditoria')

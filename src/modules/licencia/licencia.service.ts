@@ -1,9 +1,7 @@
 import {
   Injectable,
   Logger,
-  NotFoundException,
   BadRequestException,
-  ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -15,14 +13,9 @@ import { LicenciaAuditService } from './services/licencia-audit.service';
 import { LicenciaOfflineService } from './services/licencia-offline.service';
 import { LicenciaValidator } from './types/licencia-validator.interface';
 import { ActivarLicenciaDto } from './dto/activar-licencia.dto';
-import { GenerarLicenciaDto } from './dto/generar-licencia.dto';
-import { RenovarLicenciaDto } from './dto/renovar-licencia.dto';
-import { FIRMA_VERSION_ACTUAL } from './constants/licencia.constants';
 import {
-  LicenciaGeneradaResponse,
   LicenciaActivadaResponse,
   EstadoLicenciaResponse,
-  LicenciaRenovadaResponse,
   EstadoPublicoResponse,
 } from './types/licencia.types';
 import type { AuditoriaLicenciaDocument } from './schemas/auditoria-licencia.schema';
@@ -51,117 +44,14 @@ export class LicenciaService {
     private readonly offlineService: LicenciaOfflineService,
   ) {}
 
-  async generateLicencia(
-    dto: GenerarLicenciaDto,
-  ): Promise<LicenciaGeneradaResponse> {
-    const existing = await this.licenciaModel.findOne({
-      empresa_id: dto.empresa_id,
-    });
-    if (existing) {
-      throw new ConflictException('Ya existe una licencia para esta empresa');
-    }
-
-    const fechaInicio = dto.fecha_inicio
-      ? new Date(dto.fecha_inicio)
-      : (() => {
-          const d = new Date();
-          d.setHours(0, 0, 0, 0);
-          return d;
-        })();
-    const fechaVencimiento = dto.fecha_vencimiento
-      ? new Date(dto.fecha_vencimiento)
-      : this.generatorService.calculateExpiryDate(dto.tipo, dto.duracion_dias);
-
-    if (fechaVencimiento <= fechaInicio) {
-      throw new BadRequestException(
-        'La fecha de vencimiento debe ser posterior a la fecha de inicio',
-      );
-    }
-
-    if (dto.tipo !== 'perpetua') {
-      const ahora = new Date();
-      ahora.setHours(0, 0, 0, 0);
-      if (fechaVencimiento <= ahora) {
-        throw new BadRequestException(
-          'La fecha de vencimiento no puede ser anterior a hoy',
-        );
-      }
-      const maxFecha = new Date();
-      maxFecha.setDate(maxFecha.getDate() + 30);
-      maxFecha.setHours(23, 59, 59, 999);
-      if (fechaVencimiento > maxFecha) {
-        throw new BadRequestException(
-          `La fecha de vencimiento no puede exceder 30 días a partir de hoy. Máximo: ${maxFecha.toISOString().split('T')[0]}`,
-        );
-      }
-    }
-
-    const clave = this.generatorService.generateLicenciaKey(
-      dto.empresa_id,
-      dto.tipo,
-      fechaVencimiento,
-    );
-
-    const claveEncriptada = this.cryptoService.encryptAES256GCM(clave);
-    const claveHash = this.cryptoService.generateSHA256Hash(clave);
-
-    // Payload canónico v1: cubre empresa_id, tipo, fechas, max_usuarios,
-    // hardware_id (vacío al generar, se re-firma en activar), activa, revocada.
-    const firmaPayload = this.cryptoService.buildIntegrityPayload({
-      empresa_id: dto.empresa_id,
-      tipo: dto.tipo,
-      fecha_inicio: fechaInicio,
-      fecha_vencimiento: fechaVencimiento,
-      max_usuarios: dto.max_usuarios ?? 0,
-      hardware_id: '',
-      activa: true,
-      revocada: false,
-    });
-    const firmaHmac = this.cryptoService.signHMAC(firmaPayload);
-
-    const licencia = await this.licenciaModel.create({
-      clave_hash: claveHash,
-      clave_activacion_encriptada: claveEncriptada,
-      empresa_nombre: dto.empresa_nombre,
-      empresa_id: dto.empresa_id,
-      tipo: dto.tipo,
-      fecha_inicio: fechaInicio,
-      fecha_vencimiento: fechaVencimiento,
-      activa: true,
-      dias_restantes:
-        this.generatorService.calculateRemainingDays(fechaVencimiento),
-      max_usuarios: dto.max_usuarios ?? 0,
-      hardware_id: '',
-      firma_hmac: firmaHmac,
-      version_firma: FIRMA_VERSION_ACTUAL,
-      requiere_re_firma: false,
-      metadata: dto.metadata ?? {},
-    });
-
-    await this.auditService.logAccion({
-      licencia_id: licencia._id,
-      accion: 'generacion',
-      empresa_id: dto.empresa_id,
-      exitoso: true,
-      detalles: { tipo: dto.tipo, clave_hash: claveHash },
-    });
-
-    await this.offlineService.syncFromDb(licencia);
-
-    return {
-      mensaje: 'Licencia generada exitosamente',
-      licencia: {
-        clave,
-        empresa: licencia.empresa_nombre,
-        tipo: licencia.tipo,
-        fecha_inicio: licencia.fecha_inicio,
-        fecha_vencimiento: licencia.fecha_vencimiento,
-        dias_restantes: licencia.dias_restantes,
-        max_usuarios: licencia.max_usuarios,
-      },
-    };
-  }
-
+  /**
+   * Activa una licencia a partir del artefacto firmado por XILEF.
+   *
+   * El cliente es verify-only: verifica la firma Ed25519 sobre el payload
+   * canónico v2 reconstruido desde los campos firmados recibidos en el DTO y
+   * persiste la firma VERBATIM (sin re-firmar). Primera activación crea el
+   * registro; re-activación/renovación lo actualiza (upsert por clave_hash).
+   */
   async activarLicencia(
     dto: ActivarLicenciaDto,
     ipOrig?: string,
@@ -204,142 +94,141 @@ export class LicenciaService {
       throw new BadRequestException('Licencia inválida');
     }
 
-    const claveHash = this.cryptoService.generateSHA256Hash(
-      dto.clave_activacion,
-    );
-    const licencia = await this.licenciaModel.findOne({
-      clave_hash: claveHash,
+    // Verificar la firma Ed25519 de XILEF sobre el payload canónico v2
+    // reconstruido desde los campos firmados del artefacto recibido.
+    const fechaInicio = new Date(dto.fecha_inicio);
+    const fechaVencimiento = new Date(dto.fecha_vencimiento);
+    const maxUsuarios = dto.max_usuarios ?? 0;
+    const firmaPayload = this.cryptoService.buildEd25519Payload({
+      empresa_id: dto.empresa_id,
+      tipo: dto.tipo,
+      fecha_inicio: fechaInicio,
+      fecha_vencimiento: fechaVencimiento,
+      max_usuarios: maxUsuarios,
+      activa: true,
+      revocada: false,
     });
-
-    if (!licencia) {
+    if (!this.cryptoService.verifyEd25519(firmaPayload, dto.firma_ed25519)) {
       await auditRechazo(
-        'no-existe',
-        'Licencia no encontrada o inválida',
+        'integridad',
+        'Firma Ed25519 inválida',
         undefined,
         dto.empresa_id,
       );
-      throw new NotFoundException('Licencia inválida');
-    }
-
-    if (licencia.revocada) {
-      await auditRechazo(
-        'revocada',
-        'Licencia revocada',
-        licencia._id,
-        licencia.empresa_id,
-      );
       throw new BadRequestException('Licencia inválida');
     }
 
-    if (
-      this.validatorService.isExpired(
-        licencia.fecha_vencimiento,
-        licencia.ultima_verificacion_efectiva,
-      )
-    ) {
+    if (this.validatorService.isExpired(fechaVencimiento)) {
       await auditRechazo(
         'expirada',
         'Licencia expirada',
-        licencia._id,
-        licencia.empresa_id,
-      );
-      throw new BadRequestException('Licencia inválida');
-    }
-
-    // P1-2: no rebinding empresa_id (no-admin nunca; admin sólo por flujo
-    // separado de regeneración admin explícita, no por este endpoint).
-    if (dto.empresa_id && dto.empresa_id !== licencia.empresa_id) {
-      await auditRechazo(
-        'empresa-mismatch',
-        'Re-vinculación no permitida',
-        licencia._id,
+        undefined,
         dto.empresa_id,
       );
-      throw new ForbiddenException('Licencia inválida');
-    }
-
-    const isLegacy =
-      licencia.version_firma === undefined || licencia.version_firma === 0;
-    if (isLegacy) {
-      licencia.requiere_re_firma = true;
-      await this.auditService.logAccion({
-        licencia_id: licencia._id,
-        accion: 'firma-legacy',
-        empresa_id: licencia.empresa_id,
-        exitoso: true,
-        ip_origen: ipOrig,
-        user_agent: userAgent,
-        detalles: { motivo: 'firma-legacy-en-activacion' },
-      });
-    }
-
-    if (!this.validatorService.validateIntegrity(licencia)) {
-      await auditRechazo(
-        'integridad',
-        'Firma HMAC inválida',
-        licencia._id,
-        licencia.empresa_id,
-      );
       throw new BadRequestException('Licencia inválida');
     }
 
-    // P0-3: hardware_id enforcement.
-    let hardwareHash: string;
-    if (licencia.hardware_id) {
-      // Re-activación: comparar hash del dto.hardware_id con el guardado.
-      if (
-        !this.validatorService.validateHardwareId(
-          licencia.hardware_id,
-          dto.hardware_id,
-        )
-      ) {
+    const claveHash = this.cryptoService.generateSHA256Hash(
+      dto.clave_activacion,
+    );
+    const existing = await this.licenciaModel.findOne({
+      clave_hash: claveHash,
+    });
+
+    let licencia: LicenciaDocument;
+    if (existing) {
+      if (existing.revocada) {
         await auditRechazo(
-          'hardware-mismatch',
-          'Hardware no coincide con la activación registrada',
-          licencia._id,
-          licencia.empresa_id,
+          'revocada',
+          'Licencia revocada',
+          existing._id,
+          existing.empresa_id,
+        );
+        throw new BadRequestException('Licencia inválida');
+      }
+
+      // P1-2: no rebinding empresa_id.
+      if (dto.empresa_id !== existing.empresa_id) {
+        await auditRechazo(
+          'empresa-mismatch',
+          'Re-vinculación no permitida',
+          existing._id,
+          dto.empresa_id,
         );
         throw new ForbiddenException('Licencia inválida');
       }
-      hardwareHash = licencia.hardware_id;
+
+      // P0-3: hardware_id enforcement.
+      let hardwareHash: string;
+      if (existing.hardware_id) {
+        if (
+          !this.validatorService.validateHardwareId(
+            existing.hardware_id,
+            dto.hardware_id,
+          )
+        ) {
+          await auditRechazo(
+            'hardware-mismatch',
+            'Hardware no coincide con la activación registrada',
+            existing._id,
+            existing.empresa_id,
+          );
+          throw new ForbiddenException('Licencia inválida');
+        }
+        hardwareHash = existing.hardware_id;
+      } else {
+        hardwareHash = this.cryptoService.generateSHA256Hash(dto.hardware_id);
+      }
+
+      // Aplicar campos firmados del artefacto (renovación posible) y persistir
+      // la firma de XILEF verbatim (sin re-firmar).
+      existing.tipo = dto.tipo;
+      existing.fecha_inicio = fechaInicio;
+      existing.fecha_vencimiento = fechaVencimiento;
+      existing.max_usuarios = maxUsuarios;
+      existing.empresa_nombre = dto.empresa_nombre ?? existing.empresa_nombre;
+      existing.hardware_id = hardwareHash;
+      existing.activa = true;
+      existing.firma_ed25519 = dto.firma_ed25519;
+      existing.version_firma = 2;
+      existing.dias_restantes =
+        this.generatorService.calculateRemainingDays(fechaVencimiento);
+      const now = Date.now();
+      const efectivaPrev = existing.ultima_verificacion_efectiva?.getTime();
+      existing.ultima_verificacion = new Date(now);
+      existing.ultima_verificacion_efectiva = new Date(
+        efectivaPrev && efectivaPrev > now ? efectivaPrev : now,
+      );
+      existing.ultima_verificacion_monotonic_ms = this.monotonicMs();
+
+      await existing.save();
+      licencia = existing;
     } else {
-      // Primera activación: persistir el hash.
-      hardwareHash = this.cryptoService.generateSHA256Hash(dto.hardware_id);
+      // Primera activación: crear el registro desde el artefacto firmado.
+      const hardwareHash = this.cryptoService.generateSHA256Hash(
+        dto.hardware_id,
+      );
+      licencia = await this.licenciaModel.create({
+        clave_hash: claveHash,
+        // AES cleanup diferido: campo vestigial (nunca se descifra); se
+        // persiste la clave en claro como identificador único temporal.
+        clave_activacion_encriptada: dto.clave_activacion,
+        empresa_nombre: dto.empresa_nombre ?? '',
+        empresa_id: dto.empresa_id,
+        tipo: dto.tipo,
+        fecha_inicio: fechaInicio,
+        fecha_vencimiento: fechaVencimiento,
+        activa: true,
+        dias_restantes:
+          this.generatorService.calculateRemainingDays(fechaVencimiento),
+        max_usuarios: maxUsuarios,
+        hardware_id: hardwareHash,
+        firma_ed25519: dto.firma_ed25519,
+        version_firma: 2,
+        requiere_re_firma: false,
+        metadata: dto.metadata ?? {},
+      });
     }
-
-    const empresaNombre = dto.empresa_nombre ?? licencia.empresa_nombre;
-
-    licencia.activa = true;
-    licencia.empresa_nombre = empresaNombre;
-    licencia.hardware_id = hardwareHash;
-    const now = Date.now();
-    const efectivaPrev = licencia.ultima_verificacion_efectiva?.getTime();
-    const efectivaNew = efectivaPrev && efectivaPrev > now ? efectivaPrev : now;
-    licencia.ultima_verificacion = new Date(now);
-    licencia.ultima_verificacion_efectiva = new Date(efectivaNew);
-    licencia.ultima_verificacion_monotonic_ms = this.monotonicMs();
-    licencia.dias_restantes = this.generatorService.calculateRemainingDays(
-      licencia.fecha_vencimiento,
-    );
-
-    // Re-firma tras toda mutación de campos firmados. Se preserva el
-    // version_firma actual (legacy o v1) para no romper back-compat.
-    const firmaPayload = this.cryptoService.buildPayloadForVersion(
-      licencia.version_firma,
-      {
-        empresa_id: licencia.empresa_id,
-        tipo: licencia.tipo,
-        fecha_inicio: licencia.fecha_inicio,
-        fecha_vencimiento: licencia.fecha_vencimiento,
-        max_usuarios: licencia.max_usuarios,
-        hardware_id: licencia.hardware_id,
-        activa: licencia.activa,
-        revocada: licencia.revocada,
-      },
-    );
-    licencia.firma_hmac = this.cryptoService.signHMAC(firmaPayload);
-
-    await licencia.save();
 
     await this.auditService.logAccion({
       licencia_id: licencia._id,
@@ -489,20 +378,6 @@ export class LicenciaService {
     if (licencia.dias_restantes !== diasRestantes) {
       licencia.dias_restantes = diasRestantes;
     }
-    // Si legacy, marcar requiere_re_firma para que un admin migre.
-    const isLegacy =
-      licencia.version_firma === undefined || licencia.version_firma === 0;
-    if (isLegacy) {
-      licencia.requiere_re_firma = true;
-      await this.auditService.logAccion({
-        licencia_id: licencia._id,
-        accion: 'firma-legacy',
-        empresa_id: empresaId,
-        exitoso: true,
-        ip_origen: ipOrig,
-        user_agent: userAgent,
-      });
-    }
 
     try {
       await licencia.save();
@@ -527,249 +402,10 @@ export class LicenciaService {
     };
   }
 
-  async renovarLicencia(
-    dto: RenovarLicenciaDto,
-    ipOrig?: string,
-    userAgent?: string,
-  ): Promise<LicenciaRenovadaResponse> {
-    let licencia: LicenciaDocument | null = null;
-
-    if (dto.clave_activacion) {
-      const claveHash = this.cryptoService.generateSHA256Hash(
-        dto.clave_activacion,
-      );
-      licencia = await this.licenciaModel.findOne({ clave_hash: claveHash });
-    } else if (dto.empresa_id) {
-      licencia = await this.licenciaModel.findOne({
-        empresa_id: dto.empresa_id,
-      });
-    }
-
-    if (!licencia) {
-      await this.auditService.logAccion({
-        accion: 'rechazo',
-        empresa_id: dto.empresa_id ?? undefined,
-        exitoso: false,
-        error: 'No se encontró licencia para esta clave o empresa',
-        ip_origen: ipOrig,
-        user_agent: userAgent,
-        detalles: { motivo: 'no-existe' },
-      });
-      throw new NotFoundException(
-        'No se encontró licencia para esta clave o empresa',
-      );
-    }
-
-    // P1-1: renovar NO resetea revocada. Si está revocada, no se puede renovar.
-    if (licencia.revocada) {
-      await this.auditService.logAccion({
-        licencia_id: licencia._id,
-        accion: 'rechazo',
-        empresa_id: licencia.empresa_id,
-        exitoso: false,
-        error: 'Licencia revocada; use regeneración admin explícita',
-        ip_origen: ipOrig,
-        user_agent: userAgent,
-        detalles: { motivo: 'revocada' },
-      });
-      throw new BadRequestException(
-        'Licencia revocada; use regeneración admin explícita',
-      );
-    }
-
-    if (!this.validatorService.validateIntegrity(licencia)) {
-      await this.auditService.logAccion({
-        licencia_id: licencia._id,
-        accion: 'rechazo',
-        empresa_id: licencia.empresa_id,
-        exitoso: false,
-        error: 'Integridad de licencia comprometida. Contacte al soporte.',
-        ip_origen: ipOrig,
-        user_agent: userAgent,
-        detalles: { motivo: 'integridad' },
-      });
-      throw new BadRequestException(
-        'Integridad de licencia comprometida. Contacte al soporte.',
-      );
-    }
-
-    let nuevaFechaVencimiento: Date;
-    let diasAgregados: number;
-
-    if (dto.fecha_vencimiento) {
-      nuevaFechaVencimiento = new Date(dto.fecha_vencimiento);
-      nuevaFechaVencimiento.setHours(23, 59, 59, 999);
-      const ahora = new Date();
-      diasAgregados = Math.ceil(
-        (nuevaFechaVencimiento.getTime() -
-          (licencia.fecha_vencimiento < ahora
-            ? ahora.getTime()
-            : licencia.fecha_vencimiento.getTime())) /
-          (1000 * 60 * 60 * 24),
-      );
-    } else {
-      const dias = dto.dias || 30;
-      diasAgregados = dias;
-      const baseFecha =
-        licencia.fecha_vencimiento < new Date()
-          ? new Date()
-          : licencia.fecha_vencimiento;
-      nuevaFechaVencimiento = new Date(baseFecha);
-      nuevaFechaVencimiento.setDate(nuevaFechaVencimiento.getDate() + dias);
-      nuevaFechaVencimiento.setHours(23, 59, 59, 999);
-    }
-
-    if (licencia.tipo !== 'perpetua') {
-      const maxFecha = new Date();
-      maxFecha.setDate(maxFecha.getDate() + 30);
-      maxFecha.setHours(23, 59, 59, 999);
-      if (nuevaFechaVencimiento > maxFecha) {
-        await this.auditService.logAccion({
-          licencia_id: licencia._id,
-          accion: 'rechazo',
-          empresa_id: licencia.empresa_id,
-          exitoso: false,
-          error: 'La renovación excede 30 días a partir de hoy',
-          ip_origen: ipOrig,
-          user_agent: userAgent,
-          detalles: { motivo: 'formato' },
-        });
-        throw new BadRequestException(
-          `La renovación no puede exceder 30 días a partir de hoy. Máximo: ${maxFecha.toISOString().split('T')[0]}`,
-        );
-      }
-    }
-
-    const fechaInicio = dto.fecha_inicio
-      ? new Date(dto.fecha_inicio)
-      : licencia.fecha_inicio;
-
-    // Re-firma con el version_firma existente (legacy o v1).
-    const firmaPayload = this.cryptoService.buildPayloadForVersion(
-      licencia.version_firma,
-      {
-        empresa_id: licencia.empresa_id,
-        tipo: licencia.tipo,
-        fecha_inicio: fechaInicio,
-        fecha_vencimiento: nuevaFechaVencimiento,
-        max_usuarios: licencia.max_usuarios,
-        hardware_id: licencia.hardware_id,
-        activa: true,
-        revocada: licencia.revocada,
-      },
-    );
-    const nuevaFirma = this.cryptoService.signHMAC(firmaPayload);
-
-    licencia.fecha_vencimiento = nuevaFechaVencimiento;
-    licencia.fecha_inicio = fechaInicio;
-    licencia.firma_hmac = nuevaFirma;
-    licencia.activa = true;
-    licencia.dias_restantes = this.generatorService.calculateRemainingDays(
-      nuevaFechaVencimiento,
-    );
-
-    const now = Date.now();
-    const efectivaPrev = licencia.ultima_verificacion_efectiva?.getTime();
-    licencia.ultima_verificacion = new Date(now);
-    licencia.ultima_verificacion_efectiva = new Date(
-      efectivaPrev && efectivaPrev > now ? efectivaPrev : now,
-    );
-    licencia.ultima_verificacion_monotonic_ms = this.monotonicMs();
-
-    await licencia.save();
-
-    await this.auditService.logAccion({
-      licencia_id: licencia._id,
-      accion: 'renovacion',
-      empresa_id: licencia.empresa_id,
-      exitoso: true,
-      ip_origen: ipOrig,
-      user_agent: userAgent,
-      detalles: {
-        dias_agregados: diasAgregados,
-        nueva_fecha: nuevaFechaVencimiento,
-      },
-    });
-
-    await this.offlineService.syncFromDb(licencia);
-
-    return {
-      mensaje: 'Licencia renovada exitosamente',
-      licencia: {
-        empresa: licencia.empresa_nombre,
-        tipo: licencia.tipo,
-        fecha_inicio: licencia.fecha_inicio,
-        fecha_vencimiento: licencia.fecha_vencimiento,
-        dias_restantes: licencia.dias_restantes,
-      },
-    };
-  }
-
-  async revocarLicencia(
-    empresaId: string,
-    motivo: string,
-    ipOrig?: string,
-    userAgent?: string,
-  ): Promise<{ mensaje: string }> {
-    const licencia = await this.licenciaModel.findOne({
-      empresa_id: empresaId,
-    });
-
-    if (!licencia) {
-      await this.auditService.logAccion({
-        accion: 'rechazo',
-        empresa_id: empresaId,
-        exitoso: false,
-        error: 'No se encontró licencia para esta empresa',
-        ip_origen: ipOrig,
-        user_agent: userAgent,
-        detalles: { motivo: 'no-existe' },
-      });
-      throw new NotFoundException('No se encontró licencia para esta empresa');
-    }
-
-    licencia.activa = false;
-    licencia.revocada = true;
-    if (motivo) licencia.motivo_revocacion = motivo;
-
-    // Re-firma con version_firma actual: revocada es parte del payload v1
-    // (no afecta legacy ya que revocada no está en payload legacy).
-    const firmaPayload = this.cryptoService.buildPayloadForVersion(
-      licencia.version_firma,
-      {
-        empresa_id: licencia.empresa_id,
-        tipo: licencia.tipo,
-        fecha_inicio: licencia.fecha_inicio,
-        fecha_vencimiento: licencia.fecha_vencimiento,
-        max_usuarios: licencia.max_usuarios,
-        hardware_id: licencia.hardware_id,
-        activa: licencia.activa,
-        revocada: licencia.revocada,
-      },
-    );
-    licencia.firma_hmac = this.cryptoService.signHMAC(firmaPayload);
-
-    await licencia.save();
-
-    await this.auditService.logAccion({
-      licencia_id: licencia._id,
-      accion: 'revocacion',
-      empresa_id: empresaId,
-      exitoso: true,
-      ip_origen: ipOrig,
-      user_agent: userAgent,
-      detalles: { motivo },
-    });
-
-    await this.offlineService.deleteLicenseFile();
-
-    return { mensaje: 'Licencia revocada exitosamente' };
-  }
-
   async findAll(): Promise<LicenciaDocument[]> {
     const licencias = await this.licenciaModel
       .find()
-      .select('-clave_activacion_encriptada -firma_hmac')
+      .select('-clave_activacion_encriptada -firma_ed25519')
       .sort({ createdAt: -1 })
       .lean()
       .exec();
@@ -779,7 +415,7 @@ export class LicenciaService {
   async findOne(empresaId: string): Promise<LicenciaDocument | null> {
     const licencia = await this.licenciaModel
       .findOne({ empresa_id: empresaId })
-      .select('-clave_activacion_encriptada -firma_hmac')
+      .select('-clave_activacion_encriptada -firma_ed25519')
       .lean()
       .exec();
     return licencia as LicenciaDocument | null;
@@ -843,7 +479,7 @@ export class LicenciaService {
       const licencia = await this.licenciaModel
         .findOne({ clave_hash: claveHash })
         .select(
-          '+firma_hmac +activa +revocada +fecha_vencimiento +hardware_id +max_usuarios +ultima_verificacion_efectiva +version_firma',
+          '+firma_ed25519 +activa +revocada +fecha_vencimiento +hardware_id +max_usuarios +ultima_verificacion_efectiva +version_firma +tipo +fecha_inicio +empresa_id',
         )
         .lean();
 

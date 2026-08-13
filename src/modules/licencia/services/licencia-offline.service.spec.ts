@@ -7,9 +7,12 @@ import { LicenciaCryptoService } from './licencia-crypto.service';
 import * as fs from 'fs';
 import { Types } from 'mongoose';
 
-const TEST_SECRET_KEY = 'test-secret-key-min-32-chars-long!!';
-const TEST_SIGN_SECRET = 'test-secret-sign-min-32-chars!!!';
-const TEST_SALT_B64 = Buffer.alloc(32, 0x05).toString('base64');
+// Firma Ed25519 válida precalculada con la clave privada de DEV sobre el
+// payload canónico v2 de EMP-001 (suscripcion_anual 2024→2025, max_usuarios 10,
+// activa=true, revocada=false). Pública; la privada NO vive en el cliente.
+const V2_FIRMA =
+  '98f15d53d6460a638e87db25e44c0cf3d59ae93413e0633b6430bd1354962f91' +
+  '350d8113c0514338e4eece618181608ec5168e5697359e214b2855e6ead7ce0c';
 
 jest.mock('fs', () => {
   const actual = jest.requireActual('fs');
@@ -33,12 +36,6 @@ describe('LicenciaOfflineService', () => {
   let service: LicenciaOfflineService;
   let cryptoService: LicenciaCryptoService;
 
-  beforeAll(() => {
-    process.env.LICENSE_SECRET_KEY = TEST_SECRET_KEY;
-    process.env.LICENSE_SIGN_SECRET = TEST_SIGN_SECRET;
-    process.env.LICENSE_SALT = TEST_SALT_B64;
-  });
-
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -48,18 +45,12 @@ describe('LicenciaOfflineService', () => {
 
     service = module.get<LicenciaOfflineService>(LicenciaOfflineService);
     cryptoService = module.get<LicenciaCryptoService>(LicenciaCryptoService);
-
-    await (
-      cryptoService as unknown as { onModuleInit: () => void }
-    ).onModuleInit();
   });
 
-  const buildSignedData = (
-    overrides: Partial<Record<string, unknown>> = {},
-  ) => {
-    const now = new Date().toISOString();
-    const base: Record<string, unknown> = {
-      version: 1,
+  // Datos .lic con fecha de vencimiento en el futuro lejano (dinámicos).
+  const buildData = (overrides: Partial<Record<string, unknown>> = {}) =>
+    ({
+      version: 2,
       empresa_id: 'EMP-001',
       empresa_nombre: 'Test Empresa',
       tipo: 'suscripcion_mensual',
@@ -69,24 +60,13 @@ describe('LicenciaOfflineService', () => {
       hardware_id: 'abc123',
       activa: true,
       revocada: false,
-      ultima_sincronizacion: now,
-      ultima_verificacion_efectiva: now,
+      ultima_sincronizacion: '2024-01-01T00:00:00.000Z',
+      ultima_verificacion_efectiva: '2024-01-01T00:00:00.000Z',
+      firma_ed25519: V2_FIRMA,
       ...overrides,
-    };
-    const sorted = Object.keys(base)
-      .sort()
-      .reduce(
-        (acc, k) => {
-          acc[k] = base[k];
-          return acc;
-        },
-        {} as Record<string, unknown>,
-      );
-    const sig = cryptoService.signHMAC(JSON.stringify(sorted));
-    return { ...base, signature: sig };
-  };
+    }) as unknown as LicenciaOfflineData;
 
-  const writeMockFile = (data: Record<string, unknown>) => {
+  const writeMockFile = (data: unknown) => {
     mockReadFile().mockResolvedValue(JSON.stringify(data));
   };
 
@@ -100,10 +80,46 @@ describe('LicenciaOfflineService', () => {
     mockReadFile().mockRejectedValue(new Error('EACCES'));
   };
 
+  describe('verifySignature (Ed25519 sobre payload canónico v2)', () => {
+    const fixedValid = () =>
+      buildData({
+        tipo: 'suscripcion_anual',
+        fecha_inicio: '2024-01-01T00:00:00.000Z',
+        fecha_vencimiento: '2025-01-01T00:00:00.000Z',
+        max_usuarios: 10,
+        hardware_id: '',
+        activa: true,
+        revocada: false,
+      });
+
+    it('should verify valid signature', () => {
+      expect(service.verifySignature(fixedValid())).toBe(true);
+    });
+
+    it('should reject tampered signature', () => {
+      const data = fixedValid();
+      data.firma_ed25519 = 'deadbeef'.repeat(16);
+      expect(service.verifySignature(data)).toBe(false);
+    });
+
+    it('should reject tampered fields (activa)', () => {
+      const data = fixedValid();
+      data.activa = false;
+      expect(service.verifySignature(data)).toBe(false);
+    });
+
+    it('should reject tampered fields (fecha_vencimiento)', () => {
+      const data = fixedValid();
+      data.fecha_vencimiento = '2099-01-01T00:00:00.000Z';
+      expect(service.verifySignature(data)).toBe(false);
+    });
+  });
+
   describe('onModuleInit', () => {
     it('should log when .lic is valid', async () => {
-      const data = buildSignedData();
+      const data = buildData();
       writeMockFile(data);
+      jest.spyOn(service, 'verifySignature').mockReturnValue(true);
 
       const loggerSpy = jest.spyOn(
         (service as unknown as { logger: { log: jest.Mock } }).logger,
@@ -131,8 +147,9 @@ describe('LicenciaOfflineService', () => {
     });
 
     it('should warn when .lic is revoked', async () => {
-      const data = buildSignedData({ revocada: true, activa: false });
+      const data = buildData({ revocada: true, activa: false });
       writeMockFile(data);
+      jest.spyOn(service, 'verifySignature').mockReturnValue(true);
 
       const loggerSpy = jest.spyOn(
         (service as unknown as { logger: { warn: jest.Mock } }).logger,
@@ -148,37 +165,38 @@ describe('LicenciaOfflineService', () => {
 
   describe('isLicenseDataValid', () => {
     it('should return true for active, non-revoked, non-expired license', () => {
-      const data = buildSignedData() as unknown as LicenciaOfflineData;
-      expect(service.isLicenseDataValid(data)).toBe(true);
+      expect(service.isLicenseDataValid(buildData())).toBe(true);
     });
 
     it('should return false for inactive license', () => {
-      const data = buildSignedData({
-        activa: false,
-      }) as unknown as LicenciaOfflineData;
-      expect(service.isLicenseDataValid(data)).toBe(false);
+      expect(service.isLicenseDataValid(buildData({ activa: false }))).toBe(
+        false,
+      );
     });
 
     it('should return false for revoked license', () => {
-      const data = buildSignedData({
-        revocada: true,
-      }) as unknown as LicenciaOfflineData;
-      expect(service.isLicenseDataValid(data)).toBe(false);
+      expect(service.isLicenseDataValid(buildData({ revocada: true }))).toBe(
+        false,
+      );
     });
 
     it('should return false for expired license', () => {
-      const data = buildSignedData({
-        fecha_vencimiento: '2020-01-01T00:00:00.000Z',
-      }) as unknown as LicenciaOfflineData;
-      expect(service.isLicenseDataValid(data)).toBe(false);
+      expect(
+        service.isLicenseDataValid(
+          buildData({ fecha_vencimiento: '2020-01-01T00:00:00.000Z' }),
+        ),
+      ).toBe(false);
     });
 
     it('should return true for perpetua regardless of fecha_vencimiento', () => {
-      const data = buildSignedData({
-        tipo: 'perpetua',
-        fecha_vencimiento: '2020-01-01T00:00:00.000Z',
-      }) as unknown as LicenciaOfflineData;
-      expect(service.isLicenseDataValid(data)).toBe(true);
+      expect(
+        service.isLicenseDataValid(
+          buildData({
+            tipo: 'perpetua',
+            fecha_vencimiento: '2020-01-01T00:00:00.000Z',
+          }),
+        ),
+      ).toBe(true);
     });
   });
 
@@ -193,8 +211,9 @@ describe('LicenciaOfflineService', () => {
     });
 
     it('should return valid for active non-expired license', async () => {
-      const data = buildSignedData();
+      const data = buildData();
       writeMockFile(data);
+      jest.spyOn(service, 'verifySignature').mockReturnValue(true);
       const result = await service.isOfflineLicenseValidWithGrace();
       expect(result.valida).toBe(true);
       expect(result.vigente).toBe(true);
@@ -203,16 +222,18 @@ describe('LicenciaOfflineService', () => {
     });
 
     it('should return invalid for revoked license', async () => {
-      const data = buildSignedData({ revocada: true, activa: false });
+      const data = buildData({ revocada: true, activa: false });
       writeMockFile(data);
+      jest.spyOn(service, 'verifySignature').mockReturnValue(true);
       const result = await service.isOfflineLicenseValidWithGrace();
       expect(result.valida).toBe(false);
     });
 
     it('should return true with grace period for recently expired license', async () => {
       const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString();
-      const data = buildSignedData({ fecha_vencimiento: twoDaysAgo });
+      const data = buildData({ fecha_vencimiento: twoDaysAgo });
       writeMockFile(data);
+      jest.spyOn(service, 'verifySignature').mockReturnValue(true);
       const result = await service.isOfflineLicenseValidWithGrace();
       expect(result.valida).toBe(true);
       expect(result.vigente).toBe(true);
@@ -222,8 +243,9 @@ describe('LicenciaOfflineService', () => {
 
     it('should return invalid for license expired beyond grace period', async () => {
       const tenDaysAgo = new Date(Date.now() - 10 * 86400000).toISOString();
-      const data = buildSignedData({ fecha_vencimiento: tenDaysAgo });
+      const data = buildData({ fecha_vencimiento: tenDaysAgo });
       writeMockFile(data);
+      jest.spyOn(service, 'verifySignature').mockReturnValue(true);
       const result = await service.isOfflineLicenseValidWithGrace();
       expect(result.valida).toBe(false);
       expect(result.vigente).toBe(false);
@@ -231,32 +253,14 @@ describe('LicenciaOfflineService', () => {
     });
 
     it('should handle perpetua licenses', async () => {
-      const data = buildSignedData({ tipo: 'perpetua' });
+      const data = buildData({ tipo: 'perpetua' });
       writeMockFile(data);
+      jest.spyOn(service, 'verifySignature').mockReturnValue(true);
       const result = await service.isOfflineLicenseValidWithGrace();
       expect(result.valida).toBe(true);
       expect(result.vigente).toBe(true);
       expect(result.enPeriodoGracia).toBe(false);
       expect(result.diasRestantes).toBe(-1);
-    });
-  });
-
-  describe('verifySignature', () => {
-    it('should verify valid signature', () => {
-      const data = buildSignedData() as unknown as LicenciaOfflineData;
-      expect(service.verifySignature(data)).toBe(true);
-    });
-
-    it('should reject tampered signature', () => {
-      const data = buildSignedData() as unknown as LicenciaOfflineData;
-      data.signature = 'deadbeef';
-      expect(service.verifySignature(data)).toBe(false);
-    });
-
-    it('should reject tampered fields', () => {
-      const data = buildSignedData() as unknown as LicenciaOfflineData;
-      data.activa = false;
-      expect(service.verifySignature(data)).toBe(false);
     });
   });
 
@@ -268,14 +272,22 @@ describe('LicenciaOfflineService', () => {
     });
 
     it('should return null for invalid signature', async () => {
-      const data = { ...buildSignedData(), signature: 'invalid-hex' };
+      const data = { ...buildData(), firma_ed25519: 'invalid-hex' };
       writeMockFile(data);
       const result = await service.readLicenseFile();
       expect(result).toBeNull();
     });
 
-    it('should return data for valid file', async () => {
-      const data = buildSignedData();
+    it('should return data for valid file (real verifySignature)', async () => {
+      const data = buildData({
+        tipo: 'suscripcion_anual',
+        fecha_inicio: '2024-01-01T00:00:00.000Z',
+        fecha_vencimiento: '2025-01-01T00:00:00.000Z',
+        max_usuarios: 10,
+        hardware_id: '',
+        activa: true,
+        revocada: false,
+      });
       writeMockFile(data);
       const result = await service.readLicenseFile();
       expect(result).not.toBeNull();
@@ -289,10 +301,9 @@ describe('LicenciaOfflineService', () => {
     });
   });
 
-  describe('writeLicenseFile', () => {
+  describe('writeLicenseFile (frozen copy, no re-sign)', () => {
     const mockLicenciaFromDb = () => {
       const now = new Date();
-      const mockSave = jest.fn().mockResolvedValue(true);
       return {
         _id: new Types.ObjectId(),
         empresa_id: 'EMP-001',
@@ -305,23 +316,26 @@ describe('LicenciaOfflineService', () => {
         activa: true,
         revocada: false,
         ultima_verificacion_efectiva: new Date(now.getTime() - 3600000),
-        save: mockSave,
+        firma_ed25519: V2_FIRMA,
       } as unknown as import('../schemas/licencia.schema').LicenciaDocument;
     };
 
-    it('should write a valid signed .lic file', async () => {
+    it('should write a frozen .lic with verbatim firma_ed25519 (no re-sign)', async () => {
       const licencia = mockLicenciaFromDb();
       mockWriteFile().mockResolvedValue(undefined);
+      const signSpy = jest.spyOn(cryptoService, 'signHMAC');
 
       await service.writeLicenseFile(licencia);
 
       expect(mockWriteFile()).toHaveBeenCalled();
       const fileContent = mockWriteFile().mock.calls[0][1] as string;
       const parsed = JSON.parse(fileContent);
-      expect(parsed.version).toBe(1);
-      expect(parsed.signature).toBeDefined();
+      expect(parsed.version).toBe(2);
+      expect(parsed.firma_ed25519).toBe(V2_FIRMA);
       expect(parsed.ultima_sincronizacion).toBeDefined();
       expect(parsed.ultima_verificacion_efectiva).toBeDefined();
+      // NO debe re-firmar con HMAC.
+      expect(signSpy).not.toHaveBeenCalled();
     });
 
     it('should not throw on write error', async () => {

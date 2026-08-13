@@ -4,23 +4,23 @@ import { LicenciaValidatorService } from './licencia-validator.service';
 import { LicenciaCryptoService } from './licencia-crypto.service';
 import { NonceUsado } from '../schemas/nonce-usado.schema';
 
+// Firma Ed25519 válida precalculada con la clave privada de DEV sobre el
+// payload canónico v2 de EMP-001 (suscripcion_anual 2024→2025, max_usuarios 10,
+// activa=true, revocada=false). La firma es pública; la privada NO vive aquí.
+const V2_FIRMA =
+  '98f15d53d6460a638e87db25e44c0cf3d59ae93413e0633b6430bd1354962f91' +
+  '350d8113c0514338e4eece618181608ec5168e5697359e214b2855e6ead7ce0c';
+
 describe('LicenciaValidatorService', () => {
   let service: LicenciaValidatorService;
   let cryptoService: LicenciaCryptoService;
   let mockNonceInsert: jest.Mock;
   let mockNonceModel: any;
 
-  beforeAll(() => {
-    process.env.LICENSE_SECRET_KEY = 'test-secret-key-min-32-chars-long!!';
-    process.env.LICENSE_SIGN_SECRET = 'test-sign-secret-min-32-chars!!!';
-    process.env.LICENSE_SALT = Buffer.alloc(32, 0x01).toString('base64');
-  });
-
   beforeEach(async () => {
     mockNonceInsert = jest.fn();
     mockNonceModel = function MockNonceModel() {} as any;
     mockNonceModel.insertOne = mockNonceInsert;
-    // insertOne en mongoose Model devuelve un documento tras await.
     mockNonceInsert.mockImplementation((doc) => Promise.resolve(doc));
 
     const module: TestingModule = await Test.createTestingModule({
@@ -102,164 +102,51 @@ describe('LicenciaValidatorService', () => {
     });
   });
 
-  describe('validateIntegrity', () => {
-    it('should validate a license with canonical v1 signature', () => {
-      const fechaInicio = new Date('2024-01-01');
-      const fechaVenc = new Date('2025-01-01');
-      const payload = cryptoService.buildIntegrityPayload({
-        empresa_id: 'EMP-001',
-        tipo: 'suscripcion_anual',
-        fecha_inicio: fechaInicio,
-        fecha_vencimiento: fechaVenc,
-        max_usuarios: 10,
-        hardware_id: 'hash-abc',
-        activa: true,
-        revocada: false,
-      });
-      const firma = cryptoService.signHMAC(payload);
-
-      expect(
-        service.validateIntegrity({
-          empresa_id: 'EMP-001',
-          tipo: 'suscripcion_anual',
-          fecha_inicio: fechaInicio,
-          fecha_vencimiento: fechaVenc,
-          max_usuarios: 10,
-          hardware_id: 'hash-abc',
-          activa: true,
-          revocada: false,
-          firma_hmac: firma,
-          version_firma: 1,
-        }),
-      ).toBe(true);
+  describe('validateIntegrity (v2 Ed25519)', () => {
+    const baseLicencia = () => ({
+      empresa_id: 'EMP-001',
+      tipo: 'suscripcion_anual',
+      fecha_inicio: new Date('2024-01-01T00:00:00.000Z'),
+      fecha_vencimiento: new Date('2025-01-01T00:00:00.000Z'),
+      max_usuarios: 10,
+      activa: true,
+      revocada: false,
+      firma_ed25519: V2_FIRMA,
+      version_firma: 2,
     });
 
-    it('should validate a license with legacy signature when version_firma=0', () => {
-      const fechaInicio = new Date('2024-01-01');
-      const fechaVenc = new Date('2025-01-01');
-      const payload = cryptoService.buildLegacyIntegrityPayload({
-        empresa_id: 'EMP-001',
-        tipo: 'suscripcion_anual',
-        fecha_inicio: fechaInicio,
-        fecha_vencimiento: fechaVenc,
-      });
-      const firma = cryptoService.signHMAC(payload);
-
-      expect(
-        service.validateIntegrity({
-          empresa_id: 'EMP-001',
-          tipo: 'suscripcion_anual',
-          fecha_inicio: fechaInicio,
-          fecha_vencimiento: fechaVenc,
-          firma_hmac: firma,
-          version_firma: 0,
-        }),
-      ).toBe(true);
+    it('should validate a v2 license with a valid Ed25519 signature', () => {
+      expect(service.validateIntegrity(baseLicencia())).toBe(true);
     });
 
-    it('should reject a v1 license when hardware_id is tampered', () => {
-      const fechaInicio = new Date('2024-01-01');
-      const fechaVenc = new Date('2025-01-01');
-      const payload = cryptoService.buildIntegrityPayload({
-        empresa_id: 'EMP-001',
-        tipo: 'suscripcion_anual',
-        fecha_inicio: fechaInicio,
-        fecha_vencimiento: fechaVenc,
-        max_usuarios: 10,
-        hardware_id: 'original-hash',
-        activa: true,
-        revocada: false,
-      });
-      const firma = cryptoService.signHMAC(payload);
-
-      expect(
-        service.validateIntegrity({
-          empresa_id: 'EMP-001',
-          tipo: 'suscripcion_anual',
-          fecha_inicio: fechaInicio,
-          fecha_vencimiento: fechaVenc,
-          max_usuarios: 10,
-          hardware_id: 'tampered-hash',
-          activa: true,
-          revocada: false,
-          firma_hmac: firma,
-          version_firma: 1,
-        }),
-      ).toBe(false);
+    it('should reject a v2 license when fecha_vencimiento is tampered', () => {
+      const lic = baseLicencia();
+      lic.fecha_vencimiento = new Date('2099-12-31T00:00:00.000Z');
+      expect(service.validateIntegrity(lic)).toBe(false);
     });
 
-    it('should reject tampered empresa_id', () => {
-      const fechaInicio = new Date('2024-01-01');
-      const fechaVenc = new Date('2025-01-01');
-      const payload = cryptoService.buildIntegrityPayload({
-        empresa_id: 'EMP-001',
-        tipo: 'suscripcion_anual',
-        fecha_inicio: fechaInicio,
-        fecha_vencimiento: fechaVenc,
-        max_usuarios: 0,
-        hardware_id: '',
-        activa: true,
-        revocada: false,
-      });
-      const firma = cryptoService.signHMAC(payload);
-
-      expect(
-        service.validateIntegrity({
-          empresa_id: 'EMP-HACKED',
-          tipo: 'suscripcion_anual',
-          fecha_inicio: fechaInicio,
-          fecha_vencimiento: fechaVenc,
-          max_usuarios: 0,
-          hardware_id: '',
-          activa: true,
-          revocada: false,
-          firma_hmac: firma,
-          version_firma: 1,
-        }),
-      ).toBe(false);
+    it('should reject a v2 license when empresa_id is tampered', () => {
+      const lic = baseLicencia();
+      lic.empresa_id = 'EMP-HACKED';
+      expect(service.validateIntegrity(lic)).toBe(false);
     });
 
-    it('should reject tampered revocada flag (v1 covers revocada)', () => {
-      const fechaInicio = new Date('2024-01-01');
-      const fechaVenc = new Date('2025-01-01');
-      const payload = cryptoService.buildIntegrityPayload({
-        empresa_id: 'EMP-001',
-        tipo: 'suscripcion_anual',
-        fecha_inicio: fechaInicio,
-        fecha_vencimiento: fechaVenc,
-        max_usuarios: 0,
-        hardware_id: '',
-        activa: true,
-        revocada: false,
-      });
-      const firma = cryptoService.signHMAC(payload);
-
-      expect(
-        service.validateIntegrity({
-          empresa_id: 'EMP-001',
-          tipo: 'suscripcion_anual',
-          fecha_inicio: fechaInicio,
-          fecha_vencimiento: fechaVenc,
-          max_usuarios: 0,
-          hardware_id: '',
-          activa: true,
-          revocada: true,
-          firma_hmac: firma,
-          version_firma: 1,
-        }),
-      ).toBe(false);
+    it('should reject a v2 license when revocada is tampered', () => {
+      const lic = baseLicencia();
+      lic.revocada = true;
+      expect(service.validateIntegrity(lic)).toBe(false);
     });
 
-    it('should reject empty firma_hmac', () => {
-      const ok = service.validateIntegrity({
-        empresa_id: 'EMP-001',
-        tipo: 'suscripcion_anual',
-        fecha_inicio: new Date('2024-01-01'),
-        fecha_vencimiento: new Date('2025-01-01'),
-        firma_hmac: '',
-        version_firma: 1,
-      });
-      expect(ok).toBe(false);
+    it('should reject a v2 license when max_usuarios is tampered', () => {
+      const lic = baseLicencia();
+      lic.max_usuarios = 9999;
+      expect(service.validateIntegrity(lic)).toBe(false);
+    });
+
+    it('should reject empty firma_ed25519', () => {
+      const lic = baseLicencia();
+      lic.firma_ed25519 = '';
+      expect(service.validateIntegrity(lic)).toBe(false);
     });
   });
 
@@ -325,12 +212,8 @@ describe('LicenciaValidatorService', () => {
     });
 
     it('should respect max-observed date when clock rewinds (skew)', () => {
-      // Licencia vencía en 2025-12-31. ultima_verificacion_efectiva estaba en 2099
-      // (clock skew positivo). Date.now() retrocedió a 2024 → sigue vencida.
       const future = new Date('2025-12-31');
       const efectiva = new Date('2099-01-01');
-      // Forzamos un now "retrocedido" relativo a efectiva probando que la
-      // referencia de comparación es efectiva > now.
       const ok = service.isExpired(future, efectiva);
       expect(ok).toBe(true);
     });
