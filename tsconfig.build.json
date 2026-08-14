@@ -4,7 +4,6 @@
     "node_modules",
     "test",
     "dist",
-    "cli",
     "**/*spec.ts",
     "eslint.config.mjs"
   ]
