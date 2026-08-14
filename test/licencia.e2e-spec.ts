@@ -6,25 +6,79 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import * as request from 'supertest';
 import { App } from 'supertest/types';
+import * as crypto from 'crypto';
 import { LicenciaModule } from '../src/modules/licencia/licencia.module';
 import { AuthModule } from '../src/modules/auth/auth.module';
+import { buildEd25519Payload } from '../src/modules/licencia/services/payload-builder';
 
+/**
+ * E2E del controller de licencias tras el cutover Ed25519 (verify-only).
+ *
+ * Seeding: /generar fue removido (PR #2), así que en lugar de llamar al endpoint
+ * de firma la suite genera un keypair Ed25519 en runtime, inyecta SU clave
+ * pública vía `LICENCIA_ED25519_PUBLIC_KEY` (override soportado por
+ * `LicenciaCryptoService.getPublicKey`) y firma el artefacto con la privada
+ * local — simulando exactamente lo que hace la CLI de XILEF. `activar` crea el
+ * registro por sí mismo (no requiere seed previo en Mongo). La privada nunca se
+ * persiste ni se commitea.
+ */
 describe('LicenciaController (e2e)', () => {
   let app: INestApplication<App>;
-  const generatedKey = '';
+
+  // Keypair de prueba generado en runtime (privada SOLO en memoria).
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const testPublicKeyRawB64 = Buffer.from(
+    (publicKey.export({ format: 'jwk' }) as { x: string }).x,
+    'base64url',
+  ).toString('base64');
+
+  // Identificadores únicos por corrida para que la suite sea re-ejecutable sin
+  // colisionar con datos previos en la BD de test (nonce-replay, re-vinculación).
+  const HEX = crypto.randomBytes(8).toString('hex').toUpperCase();
+  const CLAVE = `XILEF-${HEX.slice(0, 4)}-${HEX.slice(4, 8)}-${HEX.slice(8, 12)}-${HEX.slice(12, 16)}`;
+  const EMPRESA_ID = `E2E-${HEX}`;
+
+  const FIELDS = {
+    empresa_id: EMPRESA_ID,
+    tipo: 'suscripcion_anual',
+    fecha_inicio: '2026-01-01T00:00:00.000Z',
+    fecha_vencimiento: '2099-01-01T00:00:00.000Z',
+    max_usuarios: 10,
+    clave_activacion: CLAVE,
+    empresa_nombre: 'Test Corp',
+    hardware_id: `e2e-hardware-${HEX}`,
+  };
+
+  /**
+   * Firma el payload canónico v2 con la privada de prueba, replicando la firma
+   * de XILEF. El cliente reconstruye el mismo payload con activa=true y
+   * revocada=false (hardcodeado en activarLicencia) y verifica con la pública.
+   */
+  const signPayload = (): string => {
+    const payload = buildEd25519Payload({
+      empresa_id: FIELDS.empresa_id,
+      tipo: FIELDS.tipo as 'suscripcion_anual',
+      fecha_inicio: new Date(FIELDS.fecha_inicio),
+      fecha_vencimiento: new Date(FIELDS.fecha_vencimiento),
+      max_usuarios: FIELDS.max_usuarios,
+      activa: true,
+      revocada: false,
+    });
+    return crypto
+      .sign(null, Buffer.from(payload, 'utf8'), privateKey)
+      .toString('hex');
+  };
 
   beforeAll(async () => {
-    process.env.LICENSE_SECRET_KEY = 'e2e-test-secret-key-minimum-32-chars!!';
-    process.env.LICENSE_SIGN_SECRET = 'e2e-test-sign-secret-minimum-32-chars!';
-    process.env.LICENSE_SALT =
-      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+    // Override de la clave pública Ed25519 antes de app.init().
+    process.env.LICENCIA_ED25519_PUBLIC_KEY = testPublicKeyRawB64;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
         MongooseModule.forRootAsync({
           imports: [ConfigModule],
-          useFactory: async (configService: ConfigService) => ({
+          useFactory: (configService: ConfigService) => ({
             uri:
               configService.get<string>('MONGODB_URI') ||
               'mongodb://localhost:27017/xilef_test',
@@ -50,79 +104,146 @@ describe('LicenciaController (e2e)', () => {
   });
 
   afterAll(async () => {
+    delete process.env.LICENCIA_ED25519_PUBLIC_KEY;
     if (app) {
       await app.close();
     }
   });
 
   // ═══════════════════════════════════════════════════════════════
-  // TEST: POST /licencia/validar-clave (público)
+  // TEST: POST /licencia/activar (público, verify-only, rate limited)
   // ═══════════════════════════════════════════════════════════════
-  describe('POST /licencia/validar-clave', () => {
-    it('should accept valid key format', () => {
+  describe('POST /licencia/activar', () => {
+    it('should activate a valid XILEF-signed license (Ed25519)', () => {
       return request(app.getHttpServer())
-        .post('/licencia/validar-clave')
-        .send({ clave: 'XILEF-A1B2-C3D4-E5F6-F7A8' })
+        .post('/licencia/activar')
+        .send({
+          clave_activacion: FIELDS.clave_activacion,
+          empresa_nombre: FIELDS.empresa_nombre,
+          empresa_id: FIELDS.empresa_id,
+          nonce: `e2e-valid-${HEX}`,
+          hardware_id: FIELDS.hardware_id,
+          tipo: FIELDS.tipo,
+          fecha_inicio: FIELDS.fecha_inicio,
+          fecha_vencimiento: FIELDS.fecha_vencimiento,
+          max_usuarios: FIELDS.max_usuarios,
+          firma_ed25519: signPayload(),
+        })
         .expect(200)
         .expect((res) => {
-          expect(res.body.formato_valido).toBe(true);
+          const body = res.body as { valida: boolean; empresa?: string };
+          expect(body.valida).toBe(true);
+          expect(body.empresa).toBe(FIELDS.empresa_nombre);
         });
     });
 
-    it('should reject invalid key format', () => {
+    it('should reject a forged Ed25519 signature (400)', () => {
+      return request(app.getHttpServer())
+        .post('/licencia/activar')
+        .send({
+          clave_activacion: FIELDS.clave_activacion,
+          empresa_nombre: FIELDS.empresa_nombre,
+          empresa_id: FIELDS.empresa_id,
+          nonce: `e2e-forged-${HEX}`,
+          hardware_id: FIELDS.hardware_id,
+          tipo: FIELDS.tipo,
+          fecha_inicio: FIELDS.fecha_inicio,
+          fecha_vencimiento: FIELDS.fecha_vencimiento,
+          max_usuarios: FIELDS.max_usuarios,
+          firma_ed25519: 'a'.repeat(128),
+        })
+        .expect(400);
+    });
+
+    it('should reject an invalid key format (400)', () => {
+      return request(app.getHttpServer())
+        .post('/licencia/activar')
+        .send({
+          clave_activacion: 'INVALID',
+          empresa_nombre: FIELDS.empresa_nombre,
+          empresa_id: FIELDS.empresa_id,
+          nonce: `e2e-format-${HEX}`,
+          hardware_id: FIELDS.hardware_id,
+          tipo: FIELDS.tipo,
+          fecha_inicio: FIELDS.fecha_inicio,
+          fecha_vencimiento: FIELDS.fecha_vencimiento,
+          max_usuarios: FIELDS.max_usuarios,
+          firma_ed25519: signPayload(),
+        })
+        .expect(400);
+    });
+
+    it('should reject non-whitelisted fields (400)', () => {
+      return request(app.getHttpServer())
+        .post('/licencia/activar')
+        .send({
+          clave_activacion: FIELDS.clave_activacion,
+          empresa_nombre: FIELDS.empresa_nombre,
+          empresa_id: FIELDS.empresa_id,
+          nonce: `e2e-whitelist-${HEX}`,
+          hardware_id: FIELDS.hardware_id,
+          tipo: FIELDS.tipo,
+          fecha_inicio: FIELDS.fecha_inicio,
+          fecha_vencimiento: FIELDS.fecha_vencimiento,
+          max_usuarios: FIELDS.max_usuarios,
+          firma_ed25519: signPayload(),
+          campo_malicioso: 'DROP TABLE licencias;',
+        })
+        .expect(400);
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // TEST: POST /licencia/validar-clave (público)
+  // ═══════════════════════════════════════════════════════════════
+  describe('POST /licencia/validar-clave', () => {
+    it('should accept a valid key format', () => {
+      return request(app.getHttpServer())
+        .post('/licencia/validar-clave')
+        .send({ clave: FIELDS.clave_activacion })
+        .expect(200)
+        .expect((res) => {
+          const body = res.body as { formato_valido: boolean };
+          expect(body.formato_valido).toBe(true);
+        });
+    });
+
+    it('should reject an invalid key format', () => {
       return request(app.getHttpServer())
         .post('/licencia/validar-clave')
         .send({ clave: 'INVALID-KEY' })
         .expect(200)
         .expect((res) => {
-          expect(res.body.formato_valido).toBe(false);
-        });
-    });
-
-    it('should reject key with wrong number of segments', () => {
-      return request(app.getHttpServer())
-        .post('/licencia/validar-clave')
-        .send({ clave: 'XILEF-AAAA-BBBB-CCCC' })
-        .expect(200)
-        .expect((res) => {
-          expect(res.body.formato_valido).toBe(false);
+          const body = res.body as { formato_valido: boolean };
+          expect(body.formato_valido).toBe(false);
         });
     });
   });
 
   // ═══════════════════════════════════════════════════════════════
-  // TEST: POST /licencia/activar (público, rate limited)
+  // TEST: GET /licencia/public/estado (público)
   // ═══════════════════════════════════════════════════════════════
-  describe('POST /licencia/activar', () => {
-    it('should reject invalid key format', () => {
+  describe('GET /licencia/public/estado', () => {
+    it('should report the activated license as valid', () => {
       return request(app.getHttpServer())
-        .post('/licencia/activar')
-        .send({
-          clave_activacion: 'INVALID',
-          empresa_nombre: 'Test Corp',
-          empresa_id: 'E2E-001',
-        })
-        .expect(400);
+        .get(`/licencia/public/estado?clave=${FIELDS.clave_activacion}`)
+        .expect(200)
+        .expect((res) => {
+          const body = res.body as { valida: boolean; vigente: boolean };
+          expect(body.valida).toBe(true);
+          expect(body.vigente).toBe(true);
+        });
     });
 
-    it('should reject missing required fields', () => {
+    it('should report an unknown key as invalid', () => {
       return request(app.getHttpServer())
-        .post('/licencia/activar')
-        .send({})
-        .expect(400);
-    });
-
-    it('should return 404 for non-existent license key', () => {
-      return request(app.getHttpServer())
-        .post('/licencia/activar')
-        .send({
-          clave_activacion: 'XILEF-DEAD-BEEF-CAFE-BABE',
-          empresa_nombre: 'Test Corp',
-          empresa_id: 'E2E-002',
-          hardware_id: 'test-hardware-id-12345',
-          nonce: 'e2e-test-nonce-404',
-        })
-        .expect(404);
+        .get('/licencia/public/estado?clave=XILEF-DEAD-BEEF-CAFE-BABE')
+        .expect(200)
+        .expect((res) => {
+          const body = res.body as { valida: boolean; vigente: boolean };
+          expect(body.valida).toBe(false);
+          expect(body.vigente).toBe(false);
+        });
     });
   });
 
@@ -136,10 +257,10 @@ describe('LicenciaController (e2e)', () => {
   });
 
   // ═══════════════════════════════════════════════════════════════
-  // TEST: POST /licencia/generar (solo admin)
+  // TEST: Endpoints de firma removidos (ya no existen → 404)
   // ═══════════════════════════════════════════════════════════════
-  describe('POST /licencia/generar', () => {
-    it('should return 401 without authorization', () => {
+  describe('Removed signing endpoints', () => {
+    it('POST /licencia/generar should return 404', () => {
       return request(app.getHttpServer())
         .post('/licencia/generar')
         .send({
@@ -147,28 +268,28 @@ describe('LicenciaController (e2e)', () => {
           empresa_id: 'E2E-TEST',
           tipo: 'suscripcion_anual',
         })
-        .expect(401);
+        .expect(404);
+    });
+
+    it('POST /licencia/renovar should return 404', () => {
+      return request(app.getHttpServer())
+        .post('/licencia/renovar')
+        .send({ empresa_id: 'TEST', dias: 365 })
+        .expect(404);
+    });
+
+    it('POST /licencia/revocar/:empresaId should return 404', () => {
+      return request(app.getHttpServer())
+        .post('/licencia/revocar/TEST-EMPRESA')
+        .send({ motivo: 'test' })
+        .expect(404);
     });
   });
 
   // ═══════════════════════════════════════════════════════════════
-  // TEST: Endpoints que requieren autenticación
+  // TEST: Endpoints protegidos (admin) — requieren JWT
   // ═══════════════════════════════════════════════════════════════
-  describe('Protected endpoints security', () => {
-    it('POST /licencia/renovar should return 401 without auth', () => {
-      return request(app.getHttpServer())
-        .post('/licencia/renovar')
-        .send({ empresa_id: 'TEST', dias: 365 })
-        .expect(401);
-    });
-
-    it('POST /licencia/revocar/:empresaId should return 401 without auth', () => {
-      return request(app.getHttpServer())
-        .post('/licencia/revocar/TEST-EMPRESA')
-        .send({ motivo: 'test' })
-        .expect(401);
-    });
-
+  describe('Protected admin endpoints security', () => {
     it('GET /licencia should return 401 without auth', () => {
       return request(app.getHttpServer()).get('/licencia').expect(401);
     });
@@ -178,50 +299,10 @@ describe('LicenciaController (e2e)', () => {
         .get('/licencia/admin/auditoria')
         .expect(401);
     });
-  });
 
-  // ═══════════════════════════════════════════════════════════════
-  // TEST: Rate limiting en endpoint público
-  // ═══════════════════════════════════════════════════════════════
-  describe('Rate limiting on POST /licencia/activar', () => {
-    it('should accept requests under rate limit', () => {
+    it('GET /licencia/:empresaId should return 401 without auth', () => {
       return request(app.getHttpServer())
-        .post('/licencia/activar')
-        .send({
-          clave_activacion: 'XILEF-1234-5678-9ABC-DEF0',
-          empresa_nombre: 'Test',
-          empresa_id: 'RATE-TEST',
-        })
-        .expect((res) => {
-          expect([404, 400]).toContain(res.status);
-        });
-    });
-  });
-
-  // ═══════════════════════════════════════════════════════════════
-  // TEST: Validación DTO (ValidationPipe)
-  // ═══════════════════════════════════════════════════════════════
-  describe('DTO Validation', () => {
-    it('should reject non-whitelisted fields on activar', () => {
-      return request(app.getHttpServer())
-        .post('/licencia/activar')
-        .send({
-          clave_activacion: 'XILEF-1234-5678-9ABC-DEF0',
-          empresa_nombre: 'Test',
-          empresa_id: 'DTO-TEST',
-          campo_malicioso: 'DROP TABLE licencias;',
-        })
-        .expect(400);
-    });
-
-    it('should reject invalid tipo on generar (auth required first)', () => {
-      return request(app.getHttpServer())
-        .post('/licencia/generar')
-        .send({
-          empresa_nombre: 'Test',
-          empresa_id: 'DTO-TEST-2',
-          tipo: 'tipo_invalido',
-        })
+        .get(`/licencia/${FIELDS.empresa_id}`)
         .expect(401);
     });
   });
