@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import * as crypto from 'crypto';
 import { LicenciaCryptoService } from './licencia-crypto.service';
 
 // Firma válida precalculada con la clave privada de DEV sobre el payload
@@ -19,7 +20,7 @@ describe('LicenciaCryptoService', () => {
 
     service = module.get<LicenciaCryptoService>(LicenciaCryptoService);
     // Disparar onModuleInit manualmente como hace NestJS runtime (no-op).
-    await service.onModuleInit();
+    service.onModuleInit();
   });
 
   it('should be defined', () => {
@@ -47,6 +48,37 @@ describe('LicenciaCryptoService', () => {
   describe('verifyEd25519', () => {
     it('should verify a valid Ed25519 signature', () => {
       expect(service.verifyEd25519(VALID_PAYLOAD, VALID_SIGNATURE)).toBe(true);
+    });
+
+    it('should verify signatures made with an env-overridden public key', async () => {
+      const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+      const rawB64 = Buffer.from(
+        (publicKey.export({ format: 'jwk' }) as { x: string }).x,
+        'base64url',
+      ).toString('base64');
+
+      const prev = process.env.LICENCIA_ED25519_PUBLIC_KEY;
+      process.env.LICENCIA_ED25519_PUBLIC_KEY = rawB64;
+      try {
+        // Instancia nueva para que getPublicKey() lea el env (no la caché).
+        const module: TestingModule = await Test.createTestingModule({
+          providers: [LicenciaCryptoService],
+        }).compile();
+        const overrideService = module.get<LicenciaCryptoService>(
+          LicenciaCryptoService,
+        );
+        const payload = 'env-override-payload';
+        const signature = crypto
+          .sign(null, Buffer.from(payload, 'utf8'), privateKey)
+          .toString('hex');
+        expect(overrideService.verifyEd25519(payload, signature)).toBe(true);
+      } finally {
+        if (prev === undefined) {
+          delete process.env.LICENCIA_ED25519_PUBLIC_KEY;
+        } else {
+          process.env.LICENCIA_ED25519_PUBLIC_KEY = prev;
+        }
+      }
     });
 
     it('should reject a forged signature', () => {

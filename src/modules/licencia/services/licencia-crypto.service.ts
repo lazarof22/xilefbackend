@@ -189,7 +189,13 @@ export class LicenciaCryptoService implements OnModuleInit {
 
   private getPublicKey(): crypto.KeyObject {
     if (!this.publicKey) {
-      const raw = Buffer.from(LICENCIA_ED25519_PUBLIC_KEY, 'base64');
+      // La clave pública puede sobrescribirse vía env (LICENCIA_ED25519_PUBLIC_KEY)
+      // para permitir pruebas e2e autocontenidas y despliegues configurables.
+      // El default sigue siendo la constante embebida. En ambos casos el cliente
+      // SOLO verifica (nunca firma).
+      const rawB64 =
+        process.env.LICENCIA_ED25519_PUBLIC_KEY ?? LICENCIA_ED25519_PUBLIC_KEY;
+      const raw = Buffer.from(rawB64, 'base64');
       this.publicKey = crypto.createPublicKey({
         key: Buffer.concat([ED25519_SPKI_PREFIX, raw]),
         format: 'der',
