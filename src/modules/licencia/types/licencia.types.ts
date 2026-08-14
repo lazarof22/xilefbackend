@@ -1,8 +1,3 @@
-import {
-  LicenciaTipo,
-  LicenciaAuditAccion,
-} from '../constants/licencia.constants';
-
 export interface LicenciaIntegrityData {
   empresa_id: string;
   tipo: string;
